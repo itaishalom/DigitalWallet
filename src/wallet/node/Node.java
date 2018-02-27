@@ -1,4 +1,4 @@
-package wallet;//###############
+package wallet.node;//###############
 // FILE : Server.java
 // WRITER : Itai Shalom, itaishalom, 301371696 
 // EXERCISE : oop ex3 2011
@@ -21,53 +21,16 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class Node {
 	private String _ip;
-	private int _port;
+	private int mPort;
     private static DatagramSocket socket = null;
 
-    public Node(){
-
+    public Node(int port){
+        mPort = port;
+        Thread listner = new NodeServerListener(port);
+        listner.start();
     }
 
 
-    public class Server extends Thread {
-        int mPort;
-        int DefaultTimeout = 5000;
-
-        Server(int port) {
-            mPort = port;
-        }
-
-        @Override
-        public void run() {
-            try {
-                Socket socket = null;
-                ServerSocket serverSocket = null;
-
-                serverSocket = new ServerSocket(mPort);
-
-                serverSocket.setSoTimeout(DefaultTimeout);
-                int counter = 0;
-                Thread a = null;
-                while (true) {
-                    counter++;
-                    try {
-                        socket = serverSocket.accept();
-                    } catch (SocketTimeoutException st) {
-                        continue;
-                    }
-
-                    a = new ActiveServer(socket, listening, allSocks);    //The session class gets the connected socket to handle
-                    allThreads.add(a);                                                //The conversation.
-                    a.start();    //If true, start the session
-                  
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-        }
-
-    }
 
 
 	public static void broadcast(
