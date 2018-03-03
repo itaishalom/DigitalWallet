@@ -18,6 +18,7 @@ import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
 import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunctionLagrangeForm;
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
+import wallet.PolynomialRegression;
 
 import static wallet.node.Message.COMPARE;
 import static wallet.node.Message.PRIVATE;
@@ -266,15 +267,15 @@ public class Node {
             for (int i = 0; i < vals.length; i++) {
                 y[i] = Double.parseDouble(vals[i]);
             }
-            y[y.length-1] = y[y.length-1] *3;
+    //        y[y.length-1] = y[y.length-1] *3;
             double[] x = new double[vals.length];
             for (int i = 0; i < x.length; i++) {
                 x[i] = i + 1;
             }
             int f = mAllNodes.length / 3;
+            PolynomialRegression p = new PolynomialRegression(x,y,f);
 
-            PolynomialFunctionLagrangeForm pol = new PolynomialFunctionLagrangeForm(x, y);
-            if (pol.degree() != f) {
+            if (p.R2() <0.99) {
                 System.out.println("bad polynomial");
             } else {
                 System.out.println("good polynomial");

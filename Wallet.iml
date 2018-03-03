@@ -16,5 +16,39 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/inter/ejml-cdense-0.33.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-core-0.33.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-ddense-0.33.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-dsparse-0.33.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-experimental-0.33.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-fdense-0.33.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-simple-0.33.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-zdense-0.33.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$MODULE_DIR$/inter/ejml-cdense-0.33-sources.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-core-0.33-sources.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-ddense-0.33-sources.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-dsparse-0.33-sources.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-experimental-0.33-sources.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-fdense-0.33-sources.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-simple-0.33-sources.jar!/" />
+          <root url="jar://$MODULE_DIR$/inter/ejml-zdense-0.33-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/Jama-1.0.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
   </component>
 </module>
