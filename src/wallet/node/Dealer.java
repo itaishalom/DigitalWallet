@@ -22,9 +22,9 @@ public class Dealer extends Node {
 
     public void startProcess(Object ob) {
         int[] q = createArrayOfCoefs();
-        q[0] = 2;
+        q[0] = 2; // decide what to do
         int[] p = createArrayOfCoefs();
-        p[0] = 0;
+        p[0] = 1;
         for (Node mNode : mNodes) {  // Iterate over all Nodes
             String answer = buildInitialValues(mNode.mNumber, q, p);
             Message msg = new Message(this.mNumber,PRIVATE,INITIAL_VALUES,answer);
