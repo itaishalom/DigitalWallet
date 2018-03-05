@@ -12,7 +12,7 @@ public class Message {
     public static final String OK = "ok";
     public static final String COMPLAINT = "complaint";
 
-
+    public static final String LOCAL_HOST = "localhost";
 
     private int mFrom;
     private String mType;

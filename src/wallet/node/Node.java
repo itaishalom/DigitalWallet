@@ -5,23 +5,19 @@ package wallet.node;//###############
 // DESCRIPTION: The MyServer object.
 //###############
 
-import java.io.*;
+import wallet.PolynomialRegression;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Objects;
 
-import org.apache.commons.math3.analysis.UnivariateFunction;
-import org.apache.commons.math3.analysis.interpolation.LinearInterpolator;
-import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
-import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
-import org.apache.commons.math3.analysis.polynomials.PolynomialFunctionLagrangeForm;
-import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
-import wallet.PolynomialRegression;
-
-import static wallet.node.Message.COMPARE;
-import static wallet.node.Message.PRIVATE;
+import static wallet.node.Message.*;
 
 /**
  * This is the MyServerObject. This object holds the ip and port
@@ -36,14 +32,18 @@ public class Node {
     private Node[] mAllNodes;
 
 
-    String[] values1;
-    String[] values2;
+    private String[] values1;
+    private String[] values2;
+    boolean valuesAreReady = false;
 
     public Node(int num, int port) {
         mPortInput = port;
         mNumber = num;
+
         Thread listner = new NodeServerListener();
         listner.start();
+        Thread broadcastReciever = new EchoServer ();
+        broadcastReciever.start();
         /*try {
             mOutputSocket = new Socket(InetAddress.getLocalHost().getHostAddress(),mPortOutput);
         } catch (IOException e) {
@@ -92,7 +92,7 @@ public class Node {
         out.print(toSend );
     }*/
 
-    public static void broadcast(
+    public  void broadcast(
             String broadcastMessage, InetAddress address) throws IOException {
         socket = new DatagramSocket();
         socket.setBroadcast(true);
@@ -100,7 +100,8 @@ public class Node {
         byte[] buffer = broadcastMessage.getBytes();
 
         DatagramPacket packet
-                = new DatagramPacket(buffer, buffer.length, address, 4445);
+                = new DatagramPacket(buffer, 0,buffer.length,address,4445);
+
         socket.send(packet);
         socket.close();
     }
@@ -166,6 +167,62 @@ public class Node {
         return ((((Node) obj).mPortInput) == this.mPortInput);
     }
 
+    public class EchoServer extends Thread {
+
+        private DatagramSocket socket;
+        private boolean running;
+        private byte[] buf = new byte[256];
+
+        public EchoServer()   {
+            try {
+                socket = new MulticastSocket(4445);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void run() {
+            running = true;
+
+            while (running) {
+                DatagramPacket packet
+                        = new DatagramPacket(buf, buf.length);
+                try {
+                    socket.receive(packet);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                String info =  new String(packet.getData(), 0, packet.getLength());
+                Message msg = new Message(info);
+                if(msg.getmFrom() == mNumber)
+                    return;
+                System.out.println("I am " + mNumber + " and I got " + msg.toString());
+         /*       InetAddress address = packet.getAddress();
+                int port = packet.getPort();
+                packet = new DatagramPacket(buf, buf.length, address, port);
+                String received
+                        = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("I am " + mNumber + " and I got " + received);
+                if (received.equals("end")) {
+                    running = false;
+                    continue;
+                }*/
+         /*       try {
+                    socket.send(packet);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }*/
+             /*   socket.close();
+                try {
+                    socket = new MulticastSocket(4445);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }*/
+            }
+        }
+    }
+
+
     public class NodeServerListener extends Thread {
         private int DefaultTimeout = 5000;
 
@@ -225,6 +282,8 @@ public class Node {
                     if (msg.isCompare()) {
                         handleCompares(msg.getmInfo(), msg.getmFrom());
                     }
+                }else{
+                    System.out.println("Incoming Broadcast " + msg.toString());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -232,12 +291,16 @@ public class Node {
         }
 
         private void handleInitialValues(String info) {
+            valuesAreReady = false;
             String[] parts = info.split("\\|");
-            values1 = parts[0].split(",");
+            String[] val1 = parts[0].split(",");
 
-            values2 = parts[1].split(",");
-            interpolate(values1);
-            interpolate(values2);
+            String[] val2 = parts[1].split(",");
+
+
+            values1 = interpolate(val1);
+            values2 = interpolate(val2);
+            valuesAreReady = true;
             for (Node node : mAllNodes) {
                 if (node.mNumber == mNumber)
                     continue;
@@ -250,7 +313,7 @@ public class Node {
 
         private void handleCompares(String info, int from) {
             String[] parts = info.split("\\|");
-            while (values1 == null || values2 == null) {
+            while (!valuesAreReady) {
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -259,27 +322,48 @@ public class Node {
             }
             if (values1[from - 1].equals(parts[1]) && values2[from - 1].equals(parts[0])) {
                 System.out.println("all good");
+            }else{
+                if(from > mNumber){
+                    Message msg = new Message(mNumber,BROADCAST,COMPLAINT,mNumber+"|"+from);
+
+                    try {
+                        List <InetAddress> s = listAllBroadcastAddresses();
+                        if(s != null && s.size() > 0)
+                            System.out.println("I am " + mNumber +" And I send broadcast");
+                        broadcast(msg.toString(),s.get(0));
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
 
-        private void interpolate(String[] vals) {
+        private String[] interpolate(String[] vals) {
             double[] y = new double[vals.length];
             for (int i = 0; i < vals.length; i++) {
                 y[i] = Double.parseDouble(vals[i]);
             }
-    //        y[y.length-1] = y[y.length-1] *3;
+          /*  if(mNumber ==1)         // Fuck node 1
+                y[1] += 2.0;*/
+            //        y[y.length-1] = y[y.length-1] *3;
             double[] x = new double[vals.length];
             for (int i = 0; i < x.length; i++) {
                 x[i] = i + 1;
             }
             int f = mAllNodes.length / 3;
-            PolynomialRegression p = new PolynomialRegression(x,y,f);
+            PolynomialRegression p = new PolynomialRegression(x, y, f);
 
-            if (p.R2() <0.99) {
+            if (p.R2() != 1.0) {
+                for (int i = 0; i < vals.length; i++) {
+                    vals[i] = "0";
+                }
                 System.out.println("bad polynomial");
             } else {
                 System.out.println("good polynomial");
             }
+            return vals;
         }
 
     }
