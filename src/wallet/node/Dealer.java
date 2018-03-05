@@ -25,7 +25,7 @@ public class Dealer extends Node {
     public void startProcess(Object ob) {
 
         int[] q = createArrayOfCoefs();
-        q[0] = 2;
+        q[0] = 2; // decide what to do
         int[] p = createArrayOfCoefs();
         p[0] = 1;
         for (Node mNode : mNodes) {  // Iterate over all Nodes
