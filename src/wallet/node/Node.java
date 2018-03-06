@@ -34,21 +34,19 @@ public class Node {
 
     private String[] values1;
     private String[] values2;
-    boolean valuesAreReady = false;
+    private boolean valuesAreReady = false;
 
     public Node(int num, int port) {
         mPortInput = port;
         mNumber = num;
-
         Thread listner = new NodeServerListener();
         listner.start();
-        Thread broadcastReciever = new EchoServer ();
-        broadcastReciever.start();
-        /*try {
-            mOutputSocket = new Socket(InetAddress.getLocalHost().getHostAddress(),mPortOutput);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
+        startBroadcastReceiver();
+    }
+
+    protected void startBroadcastReceiver() {
+        Thread broadcastReceiver = new BroadcastReceiver();
+        broadcastReceiver.start();
     }
 
     public void setNodes(Node[] nodes) {
@@ -78,32 +76,23 @@ public class Node {
         }
 
     }
-/*    public void sendMessage(Node node){
-        OutputStream outstream = null;
-        try {
-            outstream = mOutputSocket.getOutputStream();
-        } catch (IOException e) {
-            e.printStackTrace();
+
+    public void broadcast(
+            Message broadcastMessage) throws IOException {
+        List<InetAddress> s = listAllBroadcastAddresses();
+        if (s != null && s.size() > 0) {
+            InetAddress address = s.get(0);
+            socket = new DatagramSocket();
+            socket.setBroadcast(true);
+
+            byte[] buffer = broadcastMessage.toString().getBytes();
+
+            DatagramPacket packet
+                    = new DatagramPacket(buffer, 0, buffer.length, address, 4445);
+
+            socket.send(packet);
+            //   socket.close();
         }
-        PrintWriter out = new PrintWriter(outstream);
-
-        String toSend = "String to send";
-
-        out.print(toSend );
-    }*/
-
-    public  void broadcast(
-            String broadcastMessage, InetAddress address) throws IOException {
-        socket = new DatagramSocket();
-        socket.setBroadcast(true);
-
-        byte[] buffer = broadcastMessage.getBytes();
-
-        DatagramPacket packet
-                = new DatagramPacket(buffer, 0,buffer.length,address,4445);
-
-        socket.send(packet);
-        socket.close();
     }
 
     List<InetAddress> listAllBroadcastAddresses() throws SocketException {
@@ -167,13 +156,14 @@ public class Node {
         return ((((Node) obj).mPortInput) == this.mPortInput);
     }
 
-    public class EchoServer extends Thread {
+    public class BroadcastReceiver extends Thread {
 
-        private DatagramSocket socket;
-        private boolean running;
-        private byte[] buf = new byte[256];
+        protected DatagramSocket socket;
+        protected boolean running;
+        protected byte[] buf = new byte[1024];
+        protected Message msg;
 
-        public EchoServer()   {
+        protected BroadcastReceiver() {
             try {
                 socket = new MulticastSocket(4445);
             } catch (IOException e) {
@@ -181,47 +171,48 @@ public class Node {
             }
         }
 
+        protected Message getMessageFromBroadcast() {
+            DatagramPacket packet
+                    = new DatagramPacket(buf, buf.length);
+            try {
+                socket.receive(packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            String info = new String(packet.getData(), 0, packet.getLength());
+            msg = new Message(info);
+            return msg;
+        }
+
         public void run() {
             running = true;
-
             while (running) {
-                DatagramPacket packet
-                        = new DatagramPacket(buf, buf.length);
-                try {
-                    socket.receive(packet);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                String info =  new String(packet.getData(), 0, packet.getLength());
-                Message msg = new Message(info);
-                if(msg.getmFrom() == mNumber)
-                    return;
-                System.out.println("I am " + mNumber + " and I got " + msg.toString());
-         /*       InetAddress address = packet.getAddress();
-                int port = packet.getPort();
-                packet = new DatagramPacket(buf, buf.length, address, port);
-                String received
-                        = new String(packet.getData(), 0, packet.getLength());
-                System.out.println("I am " + mNumber + " and I got " + received);
-                if (received.equals("end")) {
-                    running = false;
+                Message msg = getMessageFromBroadcast();
+                if (msg.getmFrom() == mNumber)
                     continue;
-                }*/
-         /*       try {
-                    socket.send(packet);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }*/
-             /*   socket.close();
-                try {
-                    socket = new MulticastSocket(4445);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }*/
+                System.out.println("I am " + mNumber + " and I got " + msg.toString());
+                if (msg.isComplaintAnswer() && msg.getmFrom() == 0) {
+                    System.out.println("Setting straight the values");
+                    String theInfo = msg.getmInfo();
+                    String[] splitData = theInfo.split("\\|");
+                    String[] numOfNodes = splitData[0].split(",");
+                    String[] newVals = splitData[1].split(",");
+                    String s_i_j = (newVals[0]);
+                    String s_j_i = (newVals[1]);
+                    int i = Integer.parseInt(numOfNodes[0]);
+                    int j = Integer.parseInt(numOfNodes[1]);
+                    if (mNumber == i) {
+                        values1[j-1] = s_i_j;
+                        values2[j-1] = s_j_i;
+                    }
+                    if (mNumber == j) {
+                        values2[i-1] = s_i_j;
+                        values1[i-1] = s_j_i;
+                    }
+                }
             }
         }
     }
-
 
     public class NodeServerListener extends Thread {
         private int DefaultTimeout = 5000;
@@ -282,7 +273,7 @@ public class Node {
                     if (msg.isCompare()) {
                         handleCompares(msg.getmInfo(), msg.getmFrom());
                     }
-                }else{
+                } else {
                     System.out.println("Incoming Broadcast " + msg.toString());
                 }
             } catch (IOException e) {
@@ -322,17 +313,14 @@ public class Node {
             }
             if (values1[from - 1].equals(parts[1]) && values2[from - 1].equals(parts[0])) {
                 System.out.println("all good");
-            }else{
-                if(from > mNumber){
-                    Message msg = new Message(mNumber,BROADCAST,COMPLAINT,mNumber+"|"+from);
+            } else {
+                if (from > mNumber) {
+                    Message msg = new Message(mNumber, BROADCAST, COMPLAINT, mNumber + "|" + from);
 
                     try {
-                        List <InetAddress> s = listAllBroadcastAddresses();
-                        if(s != null && s.size() > 0)
-                            System.out.println("I am " + mNumber +" And I send broadcast");
-                        broadcast(msg.toString(),s.get(0));
-                    } catch (UnknownHostException e) {
-                        e.printStackTrace();
+                        System.out.println("I am " + mNumber + " And I send broadcast");
+                        broadcast(msg);//, s.get(0));
+
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -345,8 +333,8 @@ public class Node {
             for (int i = 0; i < vals.length; i++) {
                 y[i] = Double.parseDouble(vals[i]);
             }
-          /*  if(mNumber ==1)         // Fuck node 1
-                y[1] += 2.0;*/
+            if (mNumber == 1)         // Fuck node 1
+                y[1] += 2.0;
             //        y[y.length-1] = y[y.length-1] *3;
             double[] x = new double[vals.length];
             for (int i = 0; i < x.length; i++) {

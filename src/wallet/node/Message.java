@@ -11,7 +11,7 @@ public class Message {
     public static final String COMPARE = "compare";
     public static final String OK = "ok";
     public static final String COMPLAINT = "complaint";
-
+    public static final String COMPLAINT_ANSWER = "complaint_answer";
     public static final String LOCAL_HOST = "localhost";
 
     private int mFrom;
@@ -49,7 +49,6 @@ public class Message {
         mType = split[1];
         mSubType = split[2];
         mInfo = split[3];
-
     }
 
     @Override
@@ -59,6 +58,12 @@ public class Message {
 
     public boolean isPrivate(){
         return mType.equals(PRIVATE);
+    }
+    public boolean isComplaint(){
+        return mSubType.equals(COMPLAINT);
+    }
+    public boolean isComplaintAnswer(){
+        return mSubType.equals(COMPLAINT_ANSWER);
     }
     public boolean isValues(){
         return mSubType.equals(INITIAL_VALUES);

@@ -1,9 +1,12 @@
 package wallet.node;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.MulticastSocket;
 import java.util.Random;
 
-import static wallet.node.Message.INITIAL_VALUES;
-import static wallet.node.Message.PRIVATE;
+import static wallet.node.Message.*;
 
 /**
  * Created by Itai on 26/02/2018.
@@ -13,6 +16,8 @@ public class Dealer extends Node {
     private Random mRandom;
     Node[] mNodes;
     private int boundForRandom;
+    private int[] q;
+    private int[] p;
 
     public Dealer(int port, int f, Node[] nodes) {
         super(0, port);
@@ -24,9 +29,9 @@ public class Dealer extends Node {
 
     public void startProcess(Object ob) {
 
-        int[] q = createArrayOfCoefs();
+        q = createArrayOfCoefs();
         q[0] = 2; // decide what to do
-        int[] p = createArrayOfCoefs();
+        p = createArrayOfCoefs();
         p[0] = 1;
         for (Node mNode : mNodes) {  // Iterate over all Nodes
             String answer = buildInitialValues(mNode.mNumber, q, p);
@@ -35,18 +40,57 @@ public class Dealer extends Node {
         }
     }
 
-    private String buildInitialValues(int i, int[] q, int[] p) {
+    @Override
+    protected void startBroadcastReceiver() {
+        Thread broadcastReceiver = new BroadcastReceiverDealer();
+        broadcastReceiver.start();
+    }
+
+    public class BroadcastReceiverDealer extends BroadcastReceiver {
+
+        private BroadcastReceiverDealer() {
+            super();
+
+        }
+
+        @Override
+        public void run() {
+            running = true;
+            while (running) {
+
+                Message msg = getMessageFromBroadcast();
+
+                if (msg.isComplaint()) {
+                    String data = msg.getmInfo();
+                    String[] nodes = data.split("\\|");
+                    int i = Integer.parseInt(nodes[0]);
+                    int j = Integer.parseInt(nodes[1]);
+                    long result1 = computePolynomial(q, i) * computePolynomial(p, j);
+                    long result2 = computePolynomial(p, i) * computePolynomial(q, j);
+                    Message newMsg = new Message(mNumber, BROADCAST, COMPLAINT_ANSWER,  + i + "," + j + "|" + result1 + "," + result2);
+                    try {
+                        broadcast(newMsg);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+
+    private String buildInitialValues(int i, int[] firstPoly, int[] secondPoly) {
         StringBuilder response = new StringBuilder();
-        buildResponse(response, i, q, p);
+        buildResponse(response, i, firstPoly, secondPoly);
         response.append("|");
-        buildResponse(response, i, p, q);
+        buildResponse(response, i, secondPoly, firstPoly);
         return response.toString();
     }
 
-    private void buildResponse(StringBuilder response, int i, int[] q, int[] p) {
-        int val1 = computePolynomial(q, i);
+    private void buildResponse(StringBuilder response, int i, int[] q, int[] secondPoly) {
+        long val1 = computePolynomial(q, i);
         for (int n = 0; n < mNodes.length; n++) {
-            int val2 = computePolynomial(p, mNodes[n].mNumber);
+            long val2 = computePolynomial(secondPoly, mNodes[n].mNumber);
             if (n == mNodes.length - 1)
                 response.append(val1 * val2);
             else
@@ -56,12 +100,13 @@ public class Dealer extends Node {
 
     /**
      * Computes the polynomial arr[0]*x^0 + .. + arr[f]*x^f
+     *
      * @param arr - array of coefficients
-     * @param x - the value to calculate with
+     * @param x   - the value to calculate with
      * @return - The value of the polynomial in x.
      */
-    private int computePolynomial(int[] arr, int x) {
-        int res = 0;
+    private long computePolynomial(int[] arr, int x) {
+        long res = 0;
         for (int i = 0; i < arr.length; i++) {
             res += arr[i] * Math.pow(x, i);
         }
@@ -70,6 +115,7 @@ public class Dealer extends Node {
 
     /**
      * Randomly creates array of coefficients to simulate a polynomial
+     *
      * @return - Array of coefficients
      */
     private int[] createArrayOfCoefs() {
@@ -82,6 +128,7 @@ public class Dealer extends Node {
 
     /**
      * Calculates the first prime number that is greater than 10*f
+     *
      * @return prime number that is greater than 10*f
      */
     private int generatePrime() {
