@@ -30,11 +30,15 @@ public class Node {
     int mNumber;
     private static DatagramSocket socket = null;
     private Node[] mAllNodes;
-
-
+    private int mOkNumber = 0;
+    private int mComplaintNumber = 0;
+    private int mComplaintResponseNumber = 0;
     private String[] values1;
     private String[] values2;
     private boolean valuesAreReady = false;
+    private int mCompareNumbers = 0;
+    private ConfirmValues confirmValuesThread = null;
+
 
     public Node(int num, int port) {
         mPortInput = port;
@@ -64,7 +68,7 @@ public class Node {
         }
     }
 
-    private void send(Socket socket, String writeTo) throws Exception {
+    private void send(Socket socket, String writeTo) {
         try {
             // write text to the socket
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
@@ -72,26 +76,31 @@ public class Node {
             bufferedWriter.flush();
         } catch (IOException e) {
             e.printStackTrace();
-            throw e;
         }
 
     }
 
     public void broadcast(
-            Message broadcastMessage) throws IOException {
-        List<InetAddress> s = listAllBroadcastAddresses();
-        if (s != null && s.size() > 0) {
-            InetAddress address = s.get(0);
-            socket = new DatagramSocket();
-            socket.setBroadcast(true);
+            Message broadcastMessage) {
+        List<InetAddress> s = null;
+        try {
+            s = listAllBroadcastAddresses();
 
-            byte[] buffer = broadcastMessage.toString().getBytes();
+            if (s != null && s.size() > 0) {
+                InetAddress address = s.get(0);
+                socket = new DatagramSocket();
+                socket.setBroadcast(true);
 
-            DatagramPacket packet
-                    = new DatagramPacket(buffer, 0, buffer.length, address, 4445);
+                byte[] buffer = broadcastMessage.toString().getBytes();
 
-            socket.send(packet);
-            //   socket.close();
+                DatagramPacket packet
+                        = new DatagramPacket(buffer, 0, buffer.length, address, 4445);
+
+                socket.send(packet);
+                //   socket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -147,13 +156,7 @@ public class Node {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (!Node.class.isAssignableFrom(obj.getClass())) {
-            return false;
-        }
-        return ((((Node) obj).mPortInput) == this.mPortInput);
+        return obj != null && Node.class.isAssignableFrom(obj.getClass()) && ((((Node) obj).mPortInput) == this.mPortInput);
     }
 
     public class BroadcastReceiver extends Thread {
@@ -190,9 +193,22 @@ public class Node {
                 Message msg = getMessageFromBroadcast();
                 if (msg.getmFrom() == mNumber)
                     continue;
+                if (msg.isComplaint()) {
+                    mComplaintNumber++;
+                    continue;
+                }
+                if (msg.isOK()) {
+                    mOkNumber++;
+                 //   confirmValuesThread.join();
+/*
+                    if (values1 != null && values2 != null) {
+                        int n = values1.length + 1;
+                        int f = values1.length / 3;
+                    }*/
+                }
                 System.out.println("I am " + mNumber + " and I got " + msg.toString());
                 if (msg.isComplaintAnswer() && msg.getmFrom() == 0) {
-                    System.out.println("Setting straight the values");
+                    mComplaintResponseNumber++;
                     String theInfo = msg.getmInfo();
                     String[] splitData = theInfo.split("\\|");
                     String[] numOfNodes = splitData[0].split(",");
@@ -202,17 +218,22 @@ public class Node {
                     int i = Integer.parseInt(numOfNodes[0]);
                     int j = Integer.parseInt(numOfNodes[1]);
                     if (mNumber == i) {
-                        values1[j-1] = s_i_j;
-                        values2[j-1] = s_j_i;
+                        System.out.println("Setting straight the values");
+                        values1[j - 1] = s_i_j;
+                        values2[j - 1] = s_j_i;
+                        mComplaintNumber--;
                     }
                     if (mNumber == j) {
-                        values2[i-1] = s_i_j;
-                        values1[i-1] = s_j_i;
+                        mComplaintNumber--;
+                        System.out.println("Setting straight the values");
+                        values2[i - 1] = s_i_j;
+                        values1[i - 1] = s_j_i;
                     }
                 }
             }
         }
     }
+
 
     public class NodeServerListener extends Thread {
         private int DefaultTimeout = 5000;
@@ -242,14 +263,50 @@ public class Node {
         }
     }
 
+    public class ConfirmValues extends Thread {
+        int attemptNumbers = 0;
+        int TOTAL_ATTEMPTS = 3;
+        boolean isReady = false;
+        @Override
+        public void run() {
+            //Assume all the process is done
+            while (mComplaintNumber - mComplaintResponseNumber > 0) {
+                try {
+                    attemptNumbers++;
+                    if (attemptNumbers == TOTAL_ATTEMPTS) {
+                        for(int i = 0; i <values2.length ; i++){
+                            values1[i] = "0";
+                            values2[i] = "0";
+                        }
+                        return; // Or send faile
+                    }
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(mNumber==1){
+                System.out.println("here");
+            }
+            values1 = interpolate(values1);
+            values2 = interpolate(values2);
+            for (int i = 0; i < values1.length; i++) {
+                if (!values1[i].equals("0") || !values2[i].equals("0")) {
+                    Message msg = new Message(mNumber, BROADCAST, OK, "DONE");
+                    broadcast(msg);
+                    break;
+                }
+            }
+        }
+    }
+
+
     public class NodeIncomeDataHandler extends Thread {
         Socket mSocket;
-
 
         private NodeIncomeDataHandler(Socket incomeSocket) {
             mSocket = incomeSocket;
         }
-
 
         @Override
         public void run() {
@@ -271,7 +328,15 @@ public class Node {
                         handleInitialValues(msg.getmInfo());
                     }
                     if (msg.isCompare()) {
+                        mCompareNumbers++;
                         handleCompares(msg.getmInfo(), msg.getmFrom());
+                        int waitForCompares = (values1.length) - 1;
+                        if (waitForCompares == mCompareNumbers) {
+                            if (confirmValuesThread == null) {
+                                confirmValuesThread = new ConfirmValues();
+                                confirmValuesThread.run();
+                            }
+                        }
                     }
                 } else {
                     System.out.println("Incoming Broadcast " + msg.toString());
@@ -280,6 +345,7 @@ public class Node {
                 e.printStackTrace();
             }
         }
+
 
         private void handleInitialValues(String info) {
             valuesAreReady = false;
@@ -313,46 +379,42 @@ public class Node {
             }
             if (values1[from - 1].equals(parts[1]) && values2[from - 1].equals(parts[0])) {
                 System.out.println("all good");
-            } else {
+            } else {        // Should send complaint
+                mComplaintNumber++;
                 if (from > mNumber) {
                     Message msg = new Message(mNumber, BROADCAST, COMPLAINT, mNumber + "|" + from);
-
-                    try {
-                        System.out.println("I am " + mNumber + " And I send broadcast");
-                        broadcast(msg);//, s.get(0));
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    System.out.println("I am " + mNumber + " And I send broadcast");
+                    broadcast(msg);
                 }
             }
         }
 
-        private String[] interpolate(String[] vals) {
-            double[] y = new double[vals.length];
+
+    }
+
+    private String[] interpolate(String[] vals) {
+        double[] y = new double[vals.length];
+        for (int i = 0; i < vals.length; i++) {
+            y[i] = Double.parseDouble(vals[i]);
+        }
+        if (mNumber == 1 && confirmValuesThread == null)         // Fuck node 1
+            y[1] += 2.0;
+        //        y[y.length-1] = y[y.length-1] *3;
+        double[] x = new double[vals.length];
+        for (int i = 0; i < x.length; i++) {
+            x[i] = i + 1;
+        }
+        int f = mAllNodes.length / 3;
+        PolynomialRegression p = new PolynomialRegression(x, y, f);
+
+        if (p.R2() != 1.0) {
             for (int i = 0; i < vals.length; i++) {
-                y[i] = Double.parseDouble(vals[i]);
+                vals[i] = "0";
             }
-            if (mNumber == 1)         // Fuck node 1
-                y[1] += 2.0;
-            //        y[y.length-1] = y[y.length-1] *3;
-            double[] x = new double[vals.length];
-            for (int i = 0; i < x.length; i++) {
-                x[i] = i + 1;
-            }
-            int f = mAllNodes.length / 3;
-            PolynomialRegression p = new PolynomialRegression(x, y, f);
-
-            if (p.R2() != 1.0) {
-                for (int i = 0; i < vals.length; i++) {
-                    vals[i] = "0";
-                }
-                System.out.println("bad polynomial");
-            } else {
-                System.out.println("good polynomial");
-            }
-            return vals;
+            System.out.println("bad polynomial");
+        } else {
+            System.out.println("good polynomial");
         }
-
+        return vals;
     }
 }

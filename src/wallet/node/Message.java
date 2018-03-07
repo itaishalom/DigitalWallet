@@ -19,7 +19,7 @@ public class Message {
     private String mSubType;
     private String mInfo;
 
-    public Message(int from, String type, String subType, String info){
+    public Message(int from, String type, String subType, String info) {
         mFrom = from;
         mType = type;
         mSubType = subType;
@@ -42,7 +42,7 @@ public class Message {
         return mInfo;
     }
 
-    public Message(String text){
+    public Message(String text) {
         String[] split = text.split(" ~ ");
 
         mFrom = Integer.valueOf(split[0]);
@@ -52,23 +52,31 @@ public class Message {
     }
 
     @Override
-    public String toString(){
-        return mFrom +" ~ " + mType +" ~ " + mSubType + " ~ " + mInfo;
+    public String toString() {
+        return mFrom + " ~ " + mType + " ~ " + mSubType + " ~ " + mInfo;
     }
 
-    public boolean isPrivate(){
+    public boolean isPrivate() {
         return mType.equals(PRIVATE);
     }
-    public boolean isComplaint(){
+
+    public boolean isComplaint() {
         return mSubType.equals(COMPLAINT);
     }
-    public boolean isComplaintAnswer(){
+
+    public boolean isOK() {
+        return mSubType.equals(OK);
+    }
+
+    public boolean isComplaintAnswer() {
         return mSubType.equals(COMPLAINT_ANSWER);
     }
-    public boolean isValues(){
+
+    public boolean isValues() {
         return mSubType.equals(INITIAL_VALUES);
     }
-    public boolean isCompare(){
+
+    public boolean isCompare() {
         return mSubType.equals(COMPARE);
     }
 }

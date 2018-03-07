@@ -68,11 +68,9 @@ public class Dealer extends Node {
                     long result1 = computePolynomial(q, i) * computePolynomial(p, j);
                     long result2 = computePolynomial(p, i) * computePolynomial(q, j);
                     Message newMsg = new Message(mNumber, BROADCAST, COMPLAINT_ANSWER,  + i + "," + j + "|" + result1 + "," + result2);
-                    try {
+
                         broadcast(newMsg);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+
                 }
             }
         }
