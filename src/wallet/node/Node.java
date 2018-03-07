@@ -38,7 +38,7 @@ public class Node {
     private boolean valuesAreReady = false;
     private int mCompareNumbers = 0;
     private ConfirmValues confirmValuesThread = null;
-
+    private  int mIOk = 0;
 
     public Node(int num, int port) {
         mPortInput = port;
@@ -199,7 +199,7 @@ public class Node {
                 }
                 if (msg.isOK()) {
                     mOkNumber++;
-                 //   confirmValuesThread.join();
+                    //   confirmValuesThread.join();
 /*
                     if (values1 != null && values2 != null) {
                         int n = values1.length + 1;
@@ -267,6 +267,7 @@ public class Node {
         int attemptNumbers = 0;
         int TOTAL_ATTEMPTS = 3;
         boolean isReady = false;
+
         @Override
         public void run() {
             //Assume all the process is done
@@ -274,7 +275,7 @@ public class Node {
                 try {
                     attemptNumbers++;
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
-                        for(int i = 0; i <values2.length ; i++){
+                        for (int i = 0; i < values2.length; i++) {
                             values1[i] = "0";
                             values2[i] = "0";
                         }
@@ -285,7 +286,7 @@ public class Node {
                     e.printStackTrace();
                 }
             }
-            if(mNumber==1){
+            if (mNumber == 1) {
                 System.out.println("here");
             }
             values1 = interpolate(values1);
@@ -294,9 +295,42 @@ public class Node {
                 if (!values1[i].equals("0") || !values2[i].equals("0")) {
                     Message msg = new Message(mNumber, BROADCAST, OK, "DONE");
                     broadcast(msg);
+                    mIOk = 1;
+                    WaitForOk waitForOk = new WaitForOk();
+                    waitForOk.run();
                     break;
                 }
             }
+        }
+    }
+
+
+    public class WaitForOk extends Thread {
+        int attemptNumbers = 0;
+        int TOTAL_ATTEMPTS = 3;
+
+        @Override
+        public void run() {
+            //Assume all the process is done
+            int n = values1.length;
+            int f = values1.length / 3;
+            while (mOkNumber + mIOk < n - f) {
+                try {
+                    attemptNumbers++;
+                    if (attemptNumbers == TOTAL_ATTEMPTS) {
+                        for (int i = 0; i < values2.length; i++) {
+                            values1[i] = "0";
+                            values2[i] = "0";
+                            System.out.println(mNumber + " Failed to save values");
+                        }
+                        return; // Or send faile
+                    }
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            System.out.println(mNumber + " Success to save values");
         }
     }
 
