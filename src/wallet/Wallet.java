@@ -14,7 +14,7 @@ public class Wallet implements WalletInterface {
         int n = 3*f;
         nodes = new Node[n];
         for(int i = 0; i < n; i++ ){
-            nodes[i] = new Node(i+1,firstPort);
+            nodes[i] = new Node(i+1,firstPort,f);
             firstPort++;
         }
         for(int i = 0; i < n; i++ ){

@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.MulticastSocket;
 import java.util.Random;
 
+import static wallet.node.Functions.broadcast;
 import static wallet.node.Message.*;
 
 /**
@@ -20,7 +21,7 @@ public class Dealer extends Node {
     private int[] p;
 
     public Dealer(int port, int f, Node[] nodes) {
-        super(0, port);
+        super(0, port,f);
         mFaults = f;
         mRandom = new Random();
         mNodes = nodes;
@@ -69,7 +70,7 @@ public class Dealer extends Node {
                     long result2 = computePolynomial(p, i) * computePolynomial(q, j);
                     Message newMsg = new Message(mNumber, BROADCAST, COMPLAINT_ANSWER,  + i + "," + j + "|" + result1 + "," + result2);
 
-                        broadcast(newMsg);
+                        broadcast(newMsg,broadCasterSocket);
 
                 }
             }

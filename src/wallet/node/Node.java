@@ -12,11 +12,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.Objects;
 
+import static wallet.node.Functions.broadcast;
+import static wallet.node.Functions.interpolate;
+import static wallet.node.Functions.listAllBroadcastAddresses;
 import static wallet.node.Message.*;
 
 /**
@@ -28,7 +28,7 @@ import static wallet.node.Message.*;
 public class Node {
     private int mPortInput;
     int mNumber;
-    private static DatagramSocket socket = null;
+    protected static DatagramSocket broadCasterSocket = null;
     private Node[] mAllNodes;
     private int mOkNumber = 0;
     private int mComplaintNumber = 0;
@@ -39,13 +39,15 @@ public class Node {
     private int mCompareNumbers = 0;
     private ConfirmValues confirmValuesThread = null;
     private  int mIOk = 0;
+    private int mFaults;
 
-    public Node(int num, int port) {
+    public Node(int num, int port, int faultsNumber) {
         mPortInput = port;
         mNumber = num;
         Thread listner = new NodeServerListener();
         listner.start();
         startBroadcastReceiver();
+        mFaults = faultsNumber;
     }
 
     protected void startBroadcastReceiver() {
@@ -78,49 +80,6 @@ public class Node {
             e.printStackTrace();
         }
 
-    }
-
-    public void broadcast(
-            Message broadcastMessage) {
-        List<InetAddress> s = null;
-        try {
-            s = listAllBroadcastAddresses();
-
-            if (s != null && s.size() > 0) {
-                InetAddress address = s.get(0);
-                socket = new DatagramSocket();
-                socket.setBroadcast(true);
-
-                byte[] buffer = broadcastMessage.toString().getBytes();
-
-                DatagramPacket packet
-                        = new DatagramPacket(buffer, 0, buffer.length, address, 4445);
-
-                socket.send(packet);
-                //   socket.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    List<InetAddress> listAllBroadcastAddresses() throws SocketException {
-        List<InetAddress> broadcastList = new ArrayList<>();
-        Enumeration<NetworkInterface> interfaces
-                = NetworkInterface.getNetworkInterfaces();
-        while (interfaces.hasMoreElements()) {
-            NetworkInterface networkInterface = interfaces.nextElement();
-
-            if (networkInterface.isLoopback() || !networkInterface.isUp()) {
-                continue;
-            }
-
-            networkInterface.getInterfaceAddresses().stream()
-                    .map(a -> a.getBroadcast())
-                    .filter(Objects::nonNull)
-                    .forEach(broadcastList::add);
-        }
-        return broadcastList;
     }
 
 
@@ -289,12 +248,12 @@ public class Node {
             if (mNumber == 1) {
                 System.out.println("here");
             }
-            values1 = interpolate(values1);
-            values2 = interpolate(values2);
+            values1 = interpolate(values1,mFaults,false);
+            values2 = interpolate(values2,mFaults,false);
             for (int i = 0; i < values1.length; i++) {
                 if (!values1[i].equals("0") || !values2[i].equals("0")) {
                     Message msg = new Message(mNumber, BROADCAST, OK, "DONE");
-                    broadcast(msg);
+                    broadcast(msg,broadCasterSocket);
                     mIOk = 1;
                     WaitForOk waitForOk = new WaitForOk();
                     waitForOk.run();
@@ -389,8 +348,9 @@ public class Node {
             String[] val2 = parts[1].split(",");
 
 
-            values1 = interpolate(val1);
-            values2 = interpolate(val2);
+
+            values1 = interpolate(val1,mFaults,false);
+            values2 = interpolate(val2,mFaults,false);
             valuesAreReady = true;
             for (Node node : mAllNodes) {
                 if (node.mNumber == mNumber)
@@ -418,37 +378,9 @@ public class Node {
                 if (from > mNumber) {
                     Message msg = new Message(mNumber, BROADCAST, COMPLAINT, mNumber + "|" + from);
                     System.out.println("I am " + mNumber + " And I send broadcast");
-                    broadcast(msg);
+                    broadcast(msg,broadCasterSocket);
                 }
             }
         }
-
-
-    }
-
-    private String[] interpolate(String[] vals) {
-        double[] y = new double[vals.length];
-        for (int i = 0; i < vals.length; i++) {
-            y[i] = Double.parseDouble(vals[i]);
-        }
-        if (mNumber == 1 && confirmValuesThread == null)         // Fuck node 1
-            y[1] += 2.0;
-        //        y[y.length-1] = y[y.length-1] *3;
-        double[] x = new double[vals.length];
-        for (int i = 0; i < x.length; i++) {
-            x[i] = i + 1;
-        }
-        int f = mAllNodes.length / 3;
-        PolynomialRegression p = new PolynomialRegression(x, y, f);
-
-        if (p.R2() != 1.0) {
-            for (int i = 0; i < vals.length; i++) {
-                vals[i] = "0";
-            }
-            System.out.println("bad polynomial");
-        } else {
-            System.out.println("good polynomial");
-        }
-        return vals;
     }
 }
