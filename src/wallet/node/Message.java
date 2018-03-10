@@ -14,13 +14,18 @@ public class Message {
     public static final String COMPLAINT_ANSWER = "complaint_answer";
     public static final String LOCAL_HOST = "localhost";
 
+    public static final int KEY = 0;
+    public static final int VALUE = 1;
+
     private int mFrom;
     private String mType;
     private String mSubType;
     private String mInfo;
+    private int mProcessType;
 
-    public Message(int from, String type, String subType, String info) {
+    public Message(int from,int processType, String type, String subType, String info) {
         mFrom = from;
+        mProcessType = processType;
         mType = type;
         mSubType = subType;
         mInfo = info;
@@ -46,14 +51,15 @@ public class Message {
         String[] split = text.split(" ~ ");
 
         mFrom = Integer.valueOf(split[0]);
-        mType = split[1];
-        mSubType = split[2];
-        mInfo = split[3];
+        mProcessType = Integer.valueOf(split[1]);
+        mType = split[2];
+        mSubType = split[3];
+        mInfo = split[4];
     }
 
     @Override
     public String toString() {
-        return mFrom + " ~ " + mType + " ~ " + mSubType + " ~ " + mInfo;
+        return mFrom + " ~ " + mProcessType + " ~ " + mType + " ~ " + mSubType + " ~ " + mInfo;
     }
 
     public boolean isPrivate() {

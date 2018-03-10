@@ -1,9 +1,5 @@
 package wallet.node;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.MulticastSocket;
 import java.util.Random;
 
 import static wallet.node.Functions.broadcast;
@@ -29,14 +25,13 @@ public class Dealer extends Node {
     }
 
     public void startProcess(Object ob) {
-
         q = createArrayOfCoefs();
         q[0] = 2; // decide what to do
         p = createArrayOfCoefs();
         p[0] = 1;
         for (Node mNode : mNodes) {  // Iterate over all Nodes
             String answer = buildInitialValues(mNode.mNumber, q, p);
-            Message msg = new Message(this.mNumber, PRIVATE, INITIAL_VALUES, answer);
+            Message msg = new Message(this.mNumber,KEY, PRIVATE, INITIAL_VALUES, answer);
             sendMessageToNode(mNode, msg);
         }
     }
