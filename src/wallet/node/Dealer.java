@@ -63,7 +63,7 @@ public class Dealer extends Node {
                     int j = Integer.parseInt(nodes[1]);
                     long result1 = computePolynomial(q, i) * computePolynomial(p, j);
                     long result2 = computePolynomial(p, i) * computePolynomial(q, j);
-                    Message newMsg = new Message(mNumber, BROADCAST, COMPLAINT_ANSWER,  + i + "," + j + "|" + result1 + "," + result2);
+                    Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER,  + i + "," + j + "|" + result1 + "," + result2);
 
                         broadcast(newMsg,broadCasterSocket);
 

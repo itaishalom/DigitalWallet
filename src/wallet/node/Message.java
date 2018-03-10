@@ -31,6 +31,10 @@ public class Message {
         mInfo = info;
     }
 
+    public int getProcessType(){
+        return mProcessType;
+    }
+
     public int getmFrom() {
         return mFrom;
     }
