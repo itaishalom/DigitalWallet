@@ -17,7 +17,7 @@ public class Dealer extends Node {
     private int[] p;
 
     public Dealer(int port, int f, Node[] nodes) {
-        super(0, port,f);
+        super(0, port, f);
         mFaults = f;
         mRandom = new Random();
         mNodes = nodes;
@@ -31,7 +31,7 @@ public class Dealer extends Node {
         p[0] = 1;
         for (Node mNode : mNodes) {  // Iterate over all Nodes
             String answer = buildInitialValues(mNode.mNumber, q, p);
-            Message msg = new Message(this.mNumber,KEY, PRIVATE, INITIAL_VALUES, answer);
+            Message msg = new Message(this.mNumber, KEY, PRIVATE, INITIAL_VALUES, answer);
             sendMessageToNode(mNode, msg);
         }
     }
@@ -53,9 +53,7 @@ public class Dealer extends Node {
         public void run() {
             running = true;
             while (running) {
-
                 Message msg = getMessageFromBroadcast();
-
                 if (msg.isComplaint()) {
                     String data = msg.getmInfo();
                     String[] nodes = data.split("\\|");
@@ -63,11 +61,10 @@ public class Dealer extends Node {
                     int j = Integer.parseInt(nodes[1]);
                     long result1 = computePolynomial(q, i) * computePolynomial(p, j);
                     long result2 = computePolynomial(p, i) * computePolynomial(q, j);
-                    Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER,  + i + "," + j + "|" + result1 + "," + result2);
-
-                        broadcast(newMsg,broadCasterSocket);
-
+                    Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
+                    broadcast(newMsg, broadCasterSocket);
                 }
+                //Handle ok message
             }
         }
     }

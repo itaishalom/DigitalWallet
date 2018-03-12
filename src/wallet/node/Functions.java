@@ -82,7 +82,7 @@ public class Functions {
         }else {
             condition = (new PolynomialRegression(x, y, f)).R2() == 1.0;
         }
-        if (condition) {
+        if (!condition) {
             for (int i = 0; i < vals.length; i++) {
                 vals[i] = "0";
             }
