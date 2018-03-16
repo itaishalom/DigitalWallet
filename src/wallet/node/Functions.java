@@ -61,7 +61,7 @@ public class Functions {
 
 
 
-     static String[] interpolate(String[] vals, int f, boolean isRobust) {
+     static String[] interpolate(String[] vals, int f, boolean isRobust, boolean returnNullIfFails) {
 
         double[] y = new double[vals.length];
         for (int i = 0; i < vals.length; i++) {
@@ -83,6 +83,8 @@ public class Functions {
             condition = (new PolynomialRegression(x, y, f)).R2() == 1.0;
         }
         if (!condition) {
+            if(returnNullIfFails)
+                return null;
             for (int i = 0; i < vals.length; i++) {
                 vals[i] = "0";
             }
@@ -118,6 +120,30 @@ public class Functions {
 
     private static boolean printArray(double[] resX, double[] resY, int f) {
        return (new PolynomialRegression(resX, resY, f).R2() == 1.0);
+    }
+
+
+    /**
+     * Calculates the first prime number that is greater than 10*f
+     *
+     * @return prime number that is greater than 10*f
+     */
+    public static int generatePrime(int f) {
+        boolean isPrime = true;
+        int n = (15 * f);
+        do {
+            isPrime = true;
+            n++;
+            for (long factor = 2; factor * factor <= n; factor++) {
+
+                // if factor divides evenly into n, n is not prime, so break out of loop
+                if (n % factor == 0) {
+                    isPrime = false;
+                    break;
+                }
+            }
+        } while (!isPrime);
+        return n;
     }
 
 }

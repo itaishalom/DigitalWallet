@@ -29,19 +29,21 @@ public class Node {
     private int[] mOkNumber;
     private int[] mComplaintNumber;
     private int[] mComplaintResponseNumber;
-  //  private String[] values1;
-  //  private String[] values2;
+    //  private String[] values1;
+    //  private String[] values2;
     private String[][] values1;
     private String[][] values2;
     private boolean valuesAreReady = false;
-    private int[] mCompareNumbers ;
+    private int[] mCompareNumbers;
     private ConfirmValues confirmValuesThread = null;
     private int[] mIOk;
     private int mFaults;
+    int[][] listOfOkNodes;
 
     public Node(int num, int port, int faultsNumber) {
         values1 = new String[2][];
         values2 = new String[2][];
+
         mComplaintNumber = new int[2];
         mOkNumber = new int[2];
         mComplaintResponseNumber = new int[2];
@@ -55,6 +57,10 @@ public class Node {
         mFaults = faultsNumber;
     }
 
+    public int getPort() {
+        return this.mPortInput;
+    }
+
     protected void startBroadcastReceiver() {
         Thread broadcastReceiver = new BroadcastReceiver();
         broadcastReceiver.start();
@@ -62,13 +68,14 @@ public class Node {
 
     public void setNodes(Node[] nodes) {
         mAllNodes = nodes;
+        listOfOkNodes = new int[2][mAllNodes.length];
     }
 
 
-    public void sendMessageToNode(Node node, Message msg) {
+    public void sendMessageToNode(int portToSendTo, Message msg) {
         String testServerName = "localhost";
         try {
-            Socket socket = openSocket(testServerName, node.mPortInput);
+            Socket socket = openSocket(testServerName, portToSendTo);
             send(socket, msg.toString());
         } catch (Exception e) {
             e.printStackTrace();
@@ -157,41 +164,82 @@ public class Node {
                 Message msg = getMessageFromBroadcast();
                 if (msg.getmFrom() == mNumber)
                     continue;
-                if (msg.isComplaint()) {
-                    mComplaintNumber[msg.getProcessType()]++;
-                    continue;
-                }
-                if (msg.isOK()) {
-                    mOkNumber[msg.getProcessType()]++;
-                    //   confirmValuesThread.join();
+                System.out.println("I am " + mNumber + " and I got " + msg.toString());
+                switch (msg.getmSubType()) {
+                    case COMPLAINT: {
+                        mComplaintNumber[msg.getProcessType()]++;
+                        continue;
+
+                    }
+                    case OK: {
+                        mOkNumber[msg.getProcessType()]++;
+                        //   confirmValuesThread.join();
 /*
                     if (values1 != null && values2 != null) {
                         int n = values1.length + 1;
                         int f = values1.length / 3;
                     }*/
-                }
-                System.out.println("I am " + mNumber + " and I got " + msg.toString());
-                if (msg.isComplaintAnswer() && msg.getmFrom() == 0) {
-                    mComplaintResponseNumber[msg.getProcessType()]++;
-                    String theInfo = msg.getmInfo();
-                    String[] splitData = theInfo.split("\\|");
-                    String[] numOfNodes = splitData[0].split(",");
-                    String[] newVals = splitData[1].split(",");
-                    String s_i_j = (newVals[0]);
-                    String s_j_i = (newVals[1]);
-                    int i = Integer.parseInt(numOfNodes[0]);
-                    int j = Integer.parseInt(numOfNodes[1]);
-                    if (mNumber == i) {
-                        System.out.println("Setting straight the values");
-                        values1[msg.getProcessType()][j - 1] = s_i_j;
-                        values2[msg.getProcessType()][j - 1] = s_j_i;
-                        mComplaintNumber[msg.getProcessType()]--;
+                        break;
                     }
-                    if (mNumber == j) {
-                        mComplaintNumber[msg.getProcessType()]--;
-                        System.out.println("Setting straight the values");
-                        values2[msg.getProcessType()][i - 1] = s_i_j;
-                        values1[msg.getProcessType()][i - 1] = s_j_i;
+
+                    case COMPLAINT_ANSWER: {
+                        if (msg.getmFrom() == 0) {
+                            mComplaintResponseNumber[msg.getProcessType()]++;
+                            String theInfo = msg.getmInfo();
+                            String[] splitData = theInfo.split("\\|");
+                            String[] numOfNodes = splitData[0].split(",");
+                            String[] newVals = splitData[1].split(",");
+                            String s_i_j = (newVals[0]);
+                            String s_j_i = (newVals[1]);
+                            int i = Integer.parseInt(numOfNodes[0]);
+                            int j = Integer.parseInt(numOfNodes[1]);
+                            if (mNumber == i) {
+                                System.out.println("Setting straight the values");
+                                values1[msg.getProcessType()][j - 1] = s_i_j;
+                                values2[msg.getProcessType()][j - 1] = s_j_i;
+                                mComplaintNumber[msg.getProcessType()]--;
+                            }
+                            if (mNumber == j) {
+                                mComplaintNumber[msg.getProcessType()]--;
+                                System.out.println("Setting straight the values");
+                                values2[msg.getProcessType()][i - 1] = s_i_j;
+                                values1[msg.getProcessType()][i - 1] = s_j_i;
+                            }
+                        }
+                        break;
+                    }
+                    case NO_OK_ANSWER: {
+                        if (mIOk[msg.getProcessType()] == 1) {         // Condition 1
+                            String theInfo = msg.getmInfo();
+                            String[] splitData = theInfo.split("\\|");
+                            int theNode = Integer.parseInt(splitData[0]);
+                            String[] newValsRow = splitData[1].split(",");
+                            String[] newValsCol = splitData[2].split(",");
+                            newValsRow = interpolate(newValsRow, mFaults, false, true);
+                            newValsCol = interpolate(newValsCol, mFaults, false, true);
+                            if (newValsCol != null && newValsRow != null) {     // Condition 2
+                                //Set straight the values
+                                values1[msg.getProcessType()][theNode - 1] = newValsCol[mNumber - 1];
+                                values2[msg.getProcessType()][theNode - 1] = newValsRow[mNumber - 1];
+                                interpolate(values1[msg.getProcessType()], mFaults, false, false);
+                                interpolate(values2[msg.getProcessType()], mFaults, false, false);
+                                boolean isInterpolateGood = false;
+                                for (int i = 0; i < values1[msg.getProcessType()].length; i++) {
+                                    isInterpolateGood = isInterpolateGood || !values1[msg.getProcessType()][i].equals("0");
+                                }
+                                if (isInterpolateGood) {
+                                    isInterpolateGood = false;
+                                    for (int i = 0; i < values2[msg.getProcessType()].length; i++) {
+                                        isInterpolateGood = isInterpolateGood || !values2[msg.getProcessType()][i].equals("0");
+                                    }
+                                    if(isInterpolateGood){
+                                        Message ok2Broadcast = new Message(mNumber,msg.getProcessType(),BROADCAST,OK2,"done");
+                                        broadcast(ok2Broadcast,socket);
+                                    }
+                                }
+                            }
+                        }
+                        break;
                     }
                 }
             }
@@ -255,11 +303,8 @@ public class Node {
                     e.printStackTrace();
                 }
             }
-            if (mNumber == 1) {
-                System.out.println("here");
-            }
-            values1[mProcessType] = interpolate(values1[mProcessType], mFaults, false);
-            values2[mProcessType] = interpolate(values2[mProcessType], mFaults, false);
+            values1[mProcessType] = interpolate(values1[mProcessType], mFaults, false, false);
+            values2[mProcessType] = interpolate(values2[mProcessType], mFaults, false, false);
             for (int i = 0; i < values1.length; i++) {
                 if (!values1[mProcessType][i].equals("0") || !values2[mProcessType][i].equals("0")) {
                     Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
@@ -278,16 +323,23 @@ public class Node {
         int attemptNumbers = 0;
         int TOTAL_ATTEMPTS = 3;
         int mProcessType = -1;
+        int n;
+        int f;
+
+        public int getProcessType() {
+            return mProcessType;
+        }
 
         public WaitForOk(int processType) {
             mProcessType = processType;
+            n = values1.length;
+            f = values1.length / 3;
         }
 
         @Override
         public void run() {
             //Assume all the process is done
-            int n = values1.length;
-            int f = values1.length / 3;
+
             while (mOkNumber[mProcessType] + mIOk[mProcessType] < n - f) {
                 try {
                     attemptNumbers++;
@@ -304,7 +356,7 @@ public class Node {
                     e.printStackTrace();
                 }
             }
-            System.out.println(mNumber + " Success to save values for process " + mProcessType );
+
         }
     }
 
@@ -354,17 +406,22 @@ public class Node {
             }
         }
 
-
+        /**
+         * First time that the node receives data from the dealer
+         *
+         * @param info
+         */
         private void handleInitialValues(Message info) {
             valuesAreReady = false;
             String[] parts = info.getmInfo().split("\\|");
             String[] val1 = parts[0].split(",");
-
+            if (mNumber == 1)
+                val1[0] = "1123"; // fuck node 1
             String[] val2 = parts[1].split(",");
 
 
-            values1[info.getProcessType()] = interpolate(val1, mFaults, false);
-            values2[info.getProcessType()] = interpolate(val2, mFaults, false);
+            values1[info.getProcessType()] = interpolate(val1, mFaults, false, false);
+            values2[info.getProcessType()] = interpolate(val2, mFaults, false, false);
             valuesAreReady = true;
             for (Node node : mAllNodes) {
                 if (node.mNumber == mNumber)
@@ -372,7 +429,7 @@ public class Node {
                 String toSend = values1[info.getProcessType()][node.mNumber - 1] + "|" + values2[info.getProcessType()][node.mNumber - 1];
                 System.out.println("sending from " + mNumber + " to " + node.mNumber + ": " + toSend);
                 Message msg = new Message(mNumber, info.getProcessType(), PRIVATE, COMPARE, toSend);
-                sendMessageToNode(node, msg);
+                sendMessageToNode(node.getPort(), msg);
             }
         }
 

@@ -3,6 +3,7 @@ package wallet.node;
 import java.util.Random;
 
 import static wallet.node.Functions.broadcast;
+import static wallet.node.Functions.generatePrime;
 import static wallet.node.Message.*;
 
 /**
@@ -15,13 +16,18 @@ public class Dealer extends Node {
     private int boundForRandom;
     private int[] q;
     private int[] p;
+    private boolean[][] okCounter;
+    private Thread[] waitForOks;
+
 
     public Dealer(int port, int f, Node[] nodes) {
         super(0, port, f);
+        okCounter = new boolean[2][3 * f];
+        waitForOks = new Thread[2];
         mFaults = f;
         mRandom = new Random();
         mNodes = nodes;
-        boundForRandom = generatePrime();
+        boundForRandom = generatePrime(mFaults);
     }
 
     public void startProcess(Object ob) {
@@ -29,12 +35,17 @@ public class Dealer extends Node {
         q[0] = 2; // decide what to do
         p = createArrayOfCoefs();
         p[0] = 1;
-        for (Node mNode : mNodes) {  // Iterate over all Nodes
-            String answer = buildInitialValues(mNode.mNumber, q, p);
-            Message msg = new Message(this.mNumber, KEY, PRIVATE, INITIAL_VALUES, answer);
-            sendMessageToNode(mNode, msg);
+        for (Node node_i : mNodes) {  // Iterate over all Nodes
+            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort());
         }
     }
+
+    private void calculateAndPrivateSendValues(int nodeNumber, int nodePort) {
+        String answer = buildInitialValues(nodeNumber, q, p);
+        Message msg = new Message(this.mNumber, KEY, PRIVATE, INITIAL_VALUES, answer);
+        sendMessageToNode(nodePort, msg);
+    }
+
 
     @Override
     protected void startBroadcastReceiver() {
@@ -46,7 +57,6 @@ public class Dealer extends Node {
 
         private BroadcastReceiverDealer() {
             super();
-
         }
 
         @Override
@@ -54,18 +64,64 @@ public class Dealer extends Node {
             running = true;
             while (running) {
                 Message msg = getMessageFromBroadcast();
-                if (msg.isComplaint()) {
-                    String data = msg.getmInfo();
-                    String[] nodes = data.split("\\|");
-                    int i = Integer.parseInt(nodes[0]);
-                    int j = Integer.parseInt(nodes[1]);
-                    long result1 = computePolynomial(q, i) * computePolynomial(p, j);
-                    long result2 = computePolynomial(p, i) * computePolynomial(q, j);
-                    Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
-                    broadcast(newMsg, broadCasterSocket);
+                switch (msg.getmSubType()) {
+                    case COMPLAINT: {
+                        String data = msg.getmInfo();
+                        String[] nodes = data.split("\\|");
+                        int i = Integer.parseInt(nodes[0]);
+                        int j = Integer.parseInt(nodes[1]);
+                        long result1 = computePolynomial(q, i) * computePolynomial(p, j);
+                        long result2 = computePolynomial(p, i) * computePolynomial(q, j);
+                        Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
+                        broadcast(newMsg, broadCasterSocket);
+                        break;
+                    }
+                    case OK: {
+                        okCounter[msg.getProcessType()][msg.getmFrom() - 1] = true;
+                        if (waitForOks[msg.getProcessType()] == null) {
+                            waitForOks[msg.getProcessType()] = new WaitForOkDealer(msg.getProcessType());
+                            waitForOks[msg.getProcessType()].start();
+                        }
+                        break;
+                    }
                 }
-                //Handle ok message
             }
+        }
+    }
+
+    public class WaitForOkDealer extends WaitForOk {
+
+        public WaitForOkDealer(int processType) {
+            super(processType);
+        }
+
+        @Override
+        public void run() {
+            try {
+                attemptNumbers++;
+                int counter = 0;
+                while (counter < n - f) {
+                    Thread.sleep(5000);
+                    counter = 0;
+                    for (int i = 0; i < okCounter[mProcessType].length; i++) {
+                        if (okCounter[mProcessType][i])
+                            counter++;
+                    }
+                    if (attemptNumbers == TOTAL_ATTEMPTS) {
+                        return;
+                    }
+                }
+                for (int i = 0; i < okCounter[mProcessType].length; i++) {
+                    if (!okCounter[mProcessType][i]) {
+                        String answer = buildInitialValues(i + 1, q, p);
+                        Message msg = new Message(mNumber, mProcessType, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
+                        broadcast(msg, broadCasterSocket);
+                    }
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
         }
     }
 
@@ -117,27 +173,5 @@ public class Dealer extends Node {
         return arr;
     }
 
-    /**
-     * Calculates the first prime number that is greater than 10*f
-     *
-     * @return prime number that is greater than 10*f
-     */
-    private int generatePrime() {
-        boolean isPrime = true;
-        int n = (10 * mFaults);
-        do {
-            isPrime = true;
-            n++;
-            for (long factor = 2; factor * factor <= n; factor++) {
-
-                // if factor divides evenly into n, n is not prime, so break out of loop
-                if (n % factor == 0) {
-                    isPrime = false;
-                    break;
-                }
-            }
-        } while (!isPrime);
-        return n;
-    }
 
 }
