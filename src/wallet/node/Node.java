@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.net.*;
+import java.util.Arrays;
 
 import static wallet.node.Functions.broadcast;
 import static wallet.node.Functions.interpolate;
@@ -235,6 +236,11 @@ public class Node {
                                         Message ok2Broadcast = new Message(mNumber, msg.getProcessType(), BROADCAST, OK2, "done");
                                         broadcast(ok2Broadcast, socket);
                                         mIOk2[msg.getProcessType()] = true;
+                                        try {
+                                            waitForOks[msg.getProcessType()].join();
+                                        } catch (InterruptedException e) {
+                                            e.printStackTrace();
+                                        }
                                         waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 2);
                                         waitForOks[msg.getProcessType()].start();
                                     }
@@ -356,7 +362,7 @@ public class Node {
                         for (int i = 0; i < values2.length; i++) {
                             values1[mProcessType][i] = "0";
                             values2[mProcessType][i] = "0";
-                            System.err.println(mNumber + " Failed to save values");
+                            System.out.println(mNumber + " Failed to save values");
                         }
                         return; // Or send faile
                     }
@@ -365,8 +371,11 @@ public class Node {
                     e.printStackTrace();
                 }
             }
-            if (okRound == 2)
+            if (okRound == 2) {
                 System.out.println(mNumber + " saved values");
+               // System.out.println(Arrays.toString(values1[mProcessType]));
+             //   System.out.println(Arrays.toString(values2[mProcessType]));
+            }
         }
 
     }
