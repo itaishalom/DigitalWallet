@@ -41,6 +41,7 @@ public class Node {
     private int mFaults;
     int[][] listOfOkNodes;
     private Thread[] waitForOks;
+    private boolean haveIFinished = false;
 
     public Node(int num, int port, int faultsNumber) {
         values1 = new String[2][];
@@ -184,31 +185,33 @@ public class Node {
                         break;
                     }
                     case COMPLAINT_ANSWER: {
-                            mComplaintResponseNumber[msg.getProcessType()]++;
-                            String theInfo = msg.getmInfo();
-                            String[] splitData = theInfo.split("\\|");
-                            String[] numOfNodes = splitData[0].split(",");
-                            String[] newVals = splitData[1].split(",");
-                            String s_i_j = (newVals[0]);
-                            String s_j_i = (newVals[1]);
-                            int i = Integer.parseInt(numOfNodes[0]);
-                            int j = Integer.parseInt(numOfNodes[1]);
-                            if (mNumber == i) {
-                                System.out.println("Setting straight the values");
-                                values1[msg.getProcessType()][j - 1] = s_i_j;
-                                values2[msg.getProcessType()][j - 1] = s_j_i;
-                                mComplaintNumber[msg.getProcessType()]--;
-                            }
-                            if (mNumber == j) {
-                                mComplaintNumber[msg.getProcessType()]--;
-                                System.out.println("Setting straight the values");
-                                values2[msg.getProcessType()][i - 1] = s_i_j;
-                                values1[msg.getProcessType()][i - 1] = s_j_i;
-                            }
+                        mComplaintResponseNumber[msg.getProcessType()]++;
+                        String theInfo = msg.getmInfo();
+                        String[] splitData = theInfo.split("\\|");
+                        String[] numOfNodes = splitData[0].split(",");
+                        String[] newVals = splitData[1].split(",");
+                        String s_i_j = (newVals[0]);
+                        String s_j_i = (newVals[1]);
+                        int i = Integer.parseInt(numOfNodes[0]);
+                        int j = Integer.parseInt(numOfNodes[1]);
+                        if (mNumber == i) {
+                            System.out.println("Setting straight the values");
+                            values1[msg.getProcessType()][j - 1] = s_i_j;
+                            values2[msg.getProcessType()][j - 1] = s_j_i;
+                            mComplaintNumber[msg.getProcessType()]--;
+                        }
+                        if (mNumber == j) {
+                            mComplaintNumber[msg.getProcessType()]--;
+                            System.out.println("Setting straight the values");
+                            values2[msg.getProcessType()][i - 1] = s_i_j;
+                            values1[msg.getProcessType()][i - 1] = s_j_i;
+                        }
 
                         break;
                     }
                     case NO_OK_ANSWER: {
+                        if(haveIFinished)
+                            return;
                         if (mIOk[msg.getProcessType()]) {         // Condition 1
                             String theInfo = msg.getmInfo();
                             String[] splitData = theInfo.split("\\|");
@@ -238,6 +241,8 @@ public class Node {
                                         mIOk2[msg.getProcessType()] = true;
                                         try {
                                             waitForOks[msg.getProcessType()].join();
+                                            if(haveIFinished)
+                                                return;
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
                                         }
@@ -295,7 +300,7 @@ public class Node {
         @Override
         public void run() {
             //Assume all the process is done
-            while (mComplaintNumber[mProcessType] !=  mComplaintResponseNumber[mProcessType]) {
+            while (mComplaintNumber[mProcessType] != mComplaintResponseNumber[mProcessType]) {
                 try {
                     attemptNumbers++;
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
@@ -373,8 +378,9 @@ public class Node {
             }
             if (okRound == 2) {
                 System.out.println(mNumber + " saved values");
-               // System.out.println(Arrays.toString(values1[mProcessType]));
-             //   System.out.println(Arrays.toString(values2[mProcessType]));
+                haveIFinished = true;
+                // System.out.println(Arrays.toString(values1[mProcessType]));
+                //   System.out.println(Arrays.toString(values2[mProcessType]));
             }
         }
 
