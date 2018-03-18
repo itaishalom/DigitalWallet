@@ -11,16 +11,18 @@ public class Wallet implements WalletInterface {
     private Dealer dealer;
     public Wallet(int f){
         int firstPort = 8090;
-        int n = 3*f;
+        int n = 3*f+1;
         nodes = new Node[n];
-        for(int i = 0; i < n; i++ ){
+        for(int i = 0; i < n-1; i++ ){
             nodes[i] = new Node(i+1,firstPort,f);
             firstPort++;
         }
+        dealer = new Dealer(firstPort,f);
+        nodes[n-1] = dealer;
         for(int i = 0; i < n; i++ ){
             nodes[i].setNodes(nodes);
         }
-        dealer = new Dealer(firstPort,f,nodes);
+
     }
 
     @Override

@@ -12,7 +12,6 @@ import static wallet.node.Message.*;
 public class Dealer extends Node {
     private int mFaults;
     private Random mRandom;
-    Node[] mNodes;
     private int boundForRandom;
     private int[] q;
     private int[] p;
@@ -20,13 +19,12 @@ public class Dealer extends Node {
     private Thread[] waitForOks;
 
 
-    public Dealer(int port, int f, Node[] nodes) {
-        super(0, port, f);
-        okCounter = new boolean[2][3 * f];
+    public Dealer(int port, int f ) {
+        super(3*f+1, port, f);
+        okCounter = new boolean[2][(3 * f )+ 1];
         waitForOks = new Thread[2];
         mFaults = f;
         mRandom = new Random();
-        mNodes = nodes;
         boundForRandom = generatePrime(mFaults);
     }
 
@@ -35,7 +33,7 @@ public class Dealer extends Node {
         q[0] = 2; // decide what to do
         p = createArrayOfCoefs();
         p[0] = 1;
-        for (Node node_i : mNodes) {  // Iterate over all Nodes
+        for (Node node_i : mAllNodes) {  // Iterate over all Nodes
             calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort());
         }
     }
@@ -66,10 +64,13 @@ public class Dealer extends Node {
                 Message msg = getMessageFromBroadcast();
                 switch (msg.getmSubType()) {
                     case COMPLAINT: {
+                        mComplaintNumber[msg.getProcessType()]++;
                         String data = msg.getmInfo();
                         String[] nodes = data.split("\\|");
                         int i = Integer.parseInt(nodes[0]);
                         int j = Integer.parseInt(nodes[1]);
+                        if(j== mNumber)
+                            mComplaintNumber[msg.getProcessType()]--;
                         long result1 = computePolynomial(q, i) * computePolynomial(p, j);
                         long result2 = computePolynomial(p, i) * computePolynomial(q, j);
                         Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
@@ -84,6 +85,10 @@ public class Dealer extends Node {
                         }
                         break;
                     }
+                    case COMPLAINT_ANSWER: {
+                        mComplaintResponseNumber[msg.getProcessType()]++;
+                        break;
+                    }
                 }
             }
         }
@@ -92,7 +97,7 @@ public class Dealer extends Node {
     public class WaitForOkDealer extends WaitForOk {
 
         public WaitForOkDealer(int processType) {
-            super(processType);
+            super(processType,0);
         }
 
         @Override
@@ -136,9 +141,9 @@ public class Dealer extends Node {
 
     private void buildResponse(StringBuilder response, int i, int[] q, int[] secondPoly) {
         long val1 = computePolynomial(q, i);
-        for (int n = 0; n < mNodes.length; n++) {
-            long val2 = computePolynomial(secondPoly, mNodes[n].mNumber);
-            if (n == mNodes.length - 1)
+        for (int n = 0; n < mAllNodes.length; n++) {
+            long val2 = computePolynomial(secondPoly, mAllNodes[n].mNumber);
+            if (n == mAllNodes.length - 1)
                 response.append(val1 * val2);
             else
                 response.append(val1 * val2).append(",");
