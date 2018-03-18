@@ -39,7 +39,6 @@ public class Node {
     private boolean[] mIOk;
     private boolean[] mIOk2;
     private int mFaults;
-    int[][] listOfOkNodes;
     private Thread[] waitForOks;
     private boolean haveIFinished = false;
 
@@ -73,7 +72,6 @@ public class Node {
 
     public void setNodes(Node[] nodes) {
         mAllNodes = nodes;
-        listOfOkNodes = new int[2][mAllNodes.length];
     }
 
 
