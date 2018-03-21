@@ -41,6 +41,7 @@ public class Node {
     private int mFaults;
     private Thread[] waitForOks;
     private boolean haveIFinished = false;
+    NetworkCommunication communication;
 
     public Node(int num, int port, int faultsNumber) {
         values1 = new String[2][];
@@ -59,6 +60,7 @@ public class Node {
         listner.start();
         startBroadcastReceiver();
         mFaults = faultsNumber;
+        communication = new NetworkCommunication();
     }
 
     public int getPort() {
@@ -73,61 +75,7 @@ public class Node {
     public void setNodes(Node[] nodes) {
         mAllNodes = nodes;
     }
-
-
-    public void sendMessageToNode(int portToSendTo, Message msg) {
-        String testServerName = "localhost";
-        try {
-            Socket socket = openSocket(testServerName, portToSendTo);
-            send(socket, msg.toString());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void send(Socket socket, String writeTo) {
-        try {
-            // write text to the socket
-            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            bufferedWriter.write(writeTo);
-            bufferedWriter.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-
-    /**
-     * Open a socket connection to the given server on the given port.
-     * This method currently sets the socket timeout value to 10 seconds.
-     * (A second version of this method could allow the user to specify this timeout.)
-     */
-    private Socket openSocket(String server, int port) throws Exception {
-        Socket socket;
-
-        // create a socket with a timeout
-        try {
-
-            InetAddress inteAddress = InetAddress.getByName(server);
-            SocketAddress socketAddress = new InetSocketAddress(inteAddress, port);
-
-            // create a socket
-            socket = new Socket();
-
-            // this method will block no more than timeout ms.
-            int timeoutInMs = 10 * 1000;   // 10 seconds
-            socket.connect(socketAddress, timeoutInMs);
-
-            return socket;
-        } catch (SocketTimeoutException ste) {
-            System.err.println("Timed out waiting for the socket.");
-            ste.printStackTrace();
-            throw ste;
-        }
-    }
-
-
+    
     @Override
     public boolean equals(Object obj) {
         return obj != null && Node.class.isAssignableFrom(obj.getClass()) && ((((Node) obj).mPortInput) == this.mPortInput);
@@ -453,7 +401,7 @@ public class Node {
                 String toSend = values1[info.getProcessType()][node.mNumber - 1] + "|" + values2[info.getProcessType()][node.mNumber - 1];
                 System.out.println("sending from " + mNumber + " to " + node.mNumber + ": " + toSend);
                 Message msg = new Message(mNumber, info.getProcessType(), PRIVATE, COMPARE, toSend);
-                sendMessageToNode(node.getPort(), msg);
+                communication.sendMessageToNode(node.getPort(), msg);
             }
         }
 

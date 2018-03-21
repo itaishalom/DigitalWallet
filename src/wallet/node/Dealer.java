@@ -41,7 +41,7 @@ public class Dealer extends Node {
     private void calculateAndPrivateSendValues(int nodeNumber, int nodePort) {
         String answer = buildInitialValues(nodeNumber, q, p);
         Message msg = new Message(this.mNumber, KEY, PRIVATE, INITIAL_VALUES, answer);
-        sendMessageToNode(nodePort, msg);
+        communication.sendMessageToNode(nodePort, msg);
     }
 
 
