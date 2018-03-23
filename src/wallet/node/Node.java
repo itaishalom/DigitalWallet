@@ -74,7 +74,7 @@ public class Node {
     public void setNodes(Node[] nodes) {
         mAllNodes = nodes;
     }
-    
+
     @Override
     public boolean equals(Object obj) {
         return obj != null && Node.class.isAssignableFrom(obj.getClass()) && ((((Node) obj).mPortInput) == this.mPortInput);
@@ -119,7 +119,6 @@ public class Node {
                     case COMPLAINT: {
                         mComplaintNumber[msg.getProcessType()]++;
                         continue;
-
                     }
                     case OK: {
                         mOkNumber[msg.getProcessType()]++;
@@ -191,7 +190,7 @@ public class Node {
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
                                         }
-                                        if(waitForOks[msg.getProcessType()].getRound()!=2) {
+                                        if(waitForOks[msg.getProcessType()].getRound()!=2 && !haveIFinished) {
                                             waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 2);
                                             waitForOks[msg.getProcessType()].start();
                                         }
@@ -284,8 +283,6 @@ public class Node {
         int attemptNumbers = 0;
         int TOTAL_ATTEMPTS = 5;
         int mProcessType = -1;
-        int n;
-        int f;
         int okRound;
 
         public int getProcessType() {
@@ -315,8 +312,9 @@ public class Node {
                         for (int i = 0; i < mNumberOfValues; i++) {
                             values1[mProcessType][i] = "0";
                             values2[mProcessType][i] = "0";
-                            System.out.println(mNumber + " Failed to save values in round " + okRound);
                         }
+                        System.out.println(mNumber + " Failed to save values in round " + okRound);
+                        haveIFinished = true;
                         return; // Or send faile
                     }
                     Thread.sleep(5000);
@@ -419,7 +417,7 @@ public class Node {
                 }
             }
             if (values1[compareMsg.getProcessType()][from - 1].equals(parts[1]) && values2[compareMsg.getProcessType()][from - 1].equals(parts[0])) {
-                System.out.println("all good");
+             //   System.out.println("all good");
             } else {        // Should send complaint
                 mComplaintNumber[compareMsg.getProcessType()]++;
                 if (from > mNumber) {

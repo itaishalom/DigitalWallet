@@ -106,7 +106,7 @@ public class Dealer extends Node {
             try {
                 attemptNumbers++;
                 int counter = 0;
-                while (counter < n - f) {
+                while (counter < mNumberOfValues - mFaults) {
                     Thread.sleep(5000);
                     counter = 0;
                     for (int i = 0; i < okCounter[mProcessType].length; i++) {
@@ -114,6 +114,7 @@ public class Dealer extends Node {
                             counter++;
                     }
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
+                        System.out.println("Dealer failed");
                         return;
                     }
                 }
