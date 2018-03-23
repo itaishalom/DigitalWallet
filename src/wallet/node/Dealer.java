@@ -33,6 +33,7 @@ public class Dealer extends Node {
     }
 
     public void startProcess(int key, int value) {
+        System.out.println("#############  Begin store key #############");
         q[KEY] = createArrayOfCoefs();
         q[KEY][0] = key; // decide what to do
         p[KEY] = createArrayOfCoefs();
@@ -46,7 +47,8 @@ public class Dealer extends Node {
     }
 
     public class waitForProcessEnd extends Thread {
-
+        int attemptNumbers = 0;
+        int TOTAL_ATTEMPTS = 5;
         int mValue;
 
         waitForProcessEnd(int value) {
@@ -61,7 +63,13 @@ public class Dealer extends Node {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                attemptNumbers++;
+                if(attemptNumbers==TOTAL_ATTEMPTS){
+                    System.out.println("Failed Storing key");
+                    return;
+                }
             }
+            System.out.println("############# Begin store value #############");
             q[VALUE] = createArrayOfCoefs();
             q[VALUE][0] = mValue; // decide what to do
             p[VALUE] = createArrayOfCoefs();

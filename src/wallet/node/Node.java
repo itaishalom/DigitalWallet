@@ -299,8 +299,9 @@ public class Node {
             }
             if(!mIOk[mProcessType]) {
                 Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
-                broadcast(msg, broadCasterSocket);
                 mIOk[msg.getProcessType()] = true;
+                broadcast(msg, broadCasterSocket);
+
 
                 waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 1);
                 waitForOks[msg.getProcessType()].start();
@@ -310,8 +311,8 @@ public class Node {
 
 
     public void print(String s) {
-      //  if (mNumber == 4)
-       //     System.out.println(s);
+    //    if (mNumber == 1)
+     //       System.out.println(s);
     }
 
     public class WaitForOk extends Thread {
@@ -446,7 +447,7 @@ public class Node {
             valuesAreReady[info.getProcessType()] = false;
             String[] parts = info.getmInfo().split("\\|");
             String[] val1 = parts[0].split(",");
-            if (mNumber == 1)
+            if (mNumber == 1 && info.getProcessType() ==1)
                 val1[0] = "1123"; // fuck node 1
             String[] val2 = parts[1].split(",");
 
