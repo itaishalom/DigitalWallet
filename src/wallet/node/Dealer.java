@@ -13,34 +13,69 @@ public class Dealer extends Node {
     private int mFaults;
     private Random mRandom;
     private int boundForRandom;
-    private int[] q;
-    private int[] p;
+    private int[][] q;
+    private int[][] p;
+
     private boolean[][] okCounter;
     private Thread[] waitForOks;
 
 
-    public Dealer(int port, int f ) {
-        super(3*f+1, port, f);
-        okCounter = new boolean[TOTAL_PROCESS_VALUES][(3 * f )+ 1];
+    public Dealer(int port, int f) {
+
+        super(3 * f + 1, port, f);
+        q = new int[2][];
+        p = new int[2][];
+        okCounter = new boolean[TOTAL_PROCESS_VALUES][(3 * f) + 1];
         waitForOks = new Thread[TOTAL_PROCESS_VALUES];
         mFaults = f;
         mRandom = new Random();
         boundForRandom = generatePrime(mFaults);
     }
 
-    public void startProcess(Object ob) {
-        q = createArrayOfCoefs();
-        q[0] = 2; // decide what to do
-        p = createArrayOfCoefs();
-        p[0] = 1;
+    public void startProcess(int key, int value) {
+        q[KEY] = createArrayOfCoefs();
+        q[KEY][0] = key; // decide what to do
+        p[KEY] = createArrayOfCoefs();
+        p[KEY][0] = 1;
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
-            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort());
+            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY);
+        }
+        waitForProcessEnd wait = new waitForProcessEnd(value);
+        wait.start();
+
+    }
+
+    public class waitForProcessEnd extends Thread {
+
+        int mValue;
+
+        waitForProcessEnd(int value) {
+            mValue = value;
+        }
+
+        @Override
+        public void run() {
+            while (!ProtocolDone[KEY]) {
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            q[VALUE] = createArrayOfCoefs();
+            q[VALUE][0] = mValue; // decide what to do
+            p[VALUE] = createArrayOfCoefs();
+            p[VALUE][0] = 1;
+            for (Node node_i : mAllNodes) {  // Iterate over all Nodes
+                calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), VALUE);
+            }
         }
     }
 
-    private void calculateAndPrivateSendValues(int nodeNumber, int nodePort) {
-        String answer = buildInitialValues(nodeNumber, q, p);
-        Message msg = new Message(this.mNumber, KEY, PRIVATE, INITIAL_VALUES, answer);
+
+    private void calculateAndPrivateSendValues(int nodeNumber, int nodePort, int proccessNumber) {
+        String answer = buildInitialValues(nodeNumber, q[proccessNumber], p[proccessNumber]);
+        Message msg = new Message(this.mNumber, proccessNumber, PRIVATE, INITIAL_VALUES, answer);
         communication.sendMessageToNode(nodePort, msg);
     }
 
@@ -69,10 +104,10 @@ public class Dealer extends Node {
                         String[] nodes = data.split("\\|");
                         int i = Integer.parseInt(nodes[0]);
                         int j = Integer.parseInt(nodes[1]);
-                        if(j== mNumber)
+                        if (j == mNumber)
                             mComplaintNumber[msg.getProcessType()]--;
-                        long result1 = computePolynomial(q, i) * computePolynomial(p, j);
-                        long result2 = computePolynomial(p, i) * computePolynomial(q, j);
+                        long result1 = computePolynomial(q[msg.getProcessType()], i) * computePolynomial(p[msg.getProcessType()], j);
+                        long result2 = computePolynomial(p[msg.getProcessType()], i) * computePolynomial(q[msg.getProcessType()], j);
                         Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
                         broadcast(newMsg, broadCasterSocket);
                         break;
@@ -98,7 +133,7 @@ public class Dealer extends Node {
     public class WaitForOkDealer extends WaitForOk {
 
         public WaitForOkDealer(int processType) {
-            super(processType,0);
+            super(processType, 0);
         }
 
         @Override
@@ -118,13 +153,21 @@ public class Dealer extends Node {
                         return;
                     }
                 }
+                boolean isProtocolDone = true;
                 for (int i = 0; i < okCounter[mProcessType].length; i++) {
                     if (!okCounter[mProcessType][i]) {
-                        String answer = buildInitialValues(i + 1, q, p);
+                        String answer = buildInitialValues(i + 1, q[mProcessType], p[mProcessType]);
                         Message msg = new Message(mNumber, mProcessType, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
                         broadcast(msg, broadCasterSocket);
+                        isProtocolDone = false;
                     }
                 }
+
+                if (isProtocolDone) {
+                    printResults(mProcessType, 1);
+                    ProtocolDone[mProcessType] = true;
+                }
+
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

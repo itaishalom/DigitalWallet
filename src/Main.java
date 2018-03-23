@@ -11,7 +11,7 @@ public class Main {
         PolynomialRegression p = new PolynomialRegression(x,y,2);
         System.out.println(p.R2());*/
         Wallet myWallet = new Wallet(1);
-        myWallet.store("key","value");
+        myWallet.store(1,32);
     }
 
 

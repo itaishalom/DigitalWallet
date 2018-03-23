@@ -23,6 +23,7 @@ public class Message {
     public static final int TOTAL_PROCESS_VALUES = 4;
 
 
+
     private int mFrom;
     private String mType;
     private String mSubType;

@@ -26,12 +26,12 @@ public class Wallet implements WalletInterface {
     }
 
     @Override
-    public void store(String key, Object value) {
-        dealer.startProcess(key);
+    public void store(int key, int value) {
+        dealer.startProcess(key,value);
     }
 
     @Override
-    public Object retrieve(String key) {
+    public Object retrieve(int key) {
         return null;
     }
 }
