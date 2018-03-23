@@ -21,8 +21,8 @@ public class Dealer extends Node {
 
     public Dealer(int port, int f ) {
         super(3*f+1, port, f);
-        okCounter = new boolean[2][(3 * f )+ 1];
-        waitForOks = new Thread[2];
+        okCounter = new boolean[TOTAL_PROCESS_VALUES][(3 * f )+ 1];
+        waitForOks = new Thread[TOTAL_PROCESS_VALUES];
         mFaults = f;
         mRandom = new Random();
         boundForRandom = generatePrime(mFaults);
@@ -78,6 +78,7 @@ public class Dealer extends Node {
                         break;
                     }
                     case OK: {
+                        mOkNumber[msg.getProcessType()]++;
                         okCounter[msg.getProcessType()][msg.getmFrom() - 1] = true;
                         if (waitForOks[msg.getProcessType()] == null) {
                             waitForOks[msg.getProcessType()] = new WaitForOkDealer(msg.getProcessType());

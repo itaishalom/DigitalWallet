@@ -5,12 +5,9 @@ package wallet.node;//###############
 // DESCRIPTION: The MyServer object.
 //###############
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
 import java.net.*;
-import java.util.Arrays;
 
 import static wallet.node.Functions.broadcast;
 import static wallet.node.Functions.interpolate;
@@ -27,8 +24,8 @@ public class Node {
     int mNumber;
     static DatagramSocket broadCasterSocket = null;
     protected Node[] mAllNodes;
-    private int[] mOkNumber;
-    private int[] mOk2Number;
+    protected int[] mOkNumber;
+    protected int[] mOk2Number;
     protected int[] mComplaintNumber;
     protected int[] mComplaintResponseNumber;
     private String[][] values1;
@@ -39,27 +36,29 @@ public class Node {
     private boolean[] mIOk;
     private boolean[] mIOk2;
     private int mFaults;
-    private Thread[] waitForOks;
+    private WaitForOk[] waitForOks;
     private boolean haveIFinished = false;
     NetworkCommunication communication;
+    protected int mNumberOfValues;
 
     public Node(int num, int port, int faultsNumber) {
         values1 = new String[2][];
         values2 = new String[2][];
-        waitForOks = new Thread[2];
-        mComplaintNumber = new int[2];
-        mOkNumber = new int[2];
-        mOk2Number = new int[2];
-        mComplaintResponseNumber = new int[2];
-        mIOk = new boolean[2];
-        mIOk2 = new boolean[2];
-        mCompareNumbers = new int[2];
+        waitForOks = new WaitForOk[TOTAL_PROCESS_VALUES];
+        mComplaintNumber = new int[TOTAL_PROCESS_VALUES];
+        mOkNumber = new int[TOTAL_PROCESS_VALUES];
+        mOk2Number = new int[TOTAL_PROCESS_VALUES];
+        mComplaintResponseNumber = new int[TOTAL_PROCESS_VALUES];
+        mIOk = new boolean[TOTAL_PROCESS_VALUES];
+        mIOk2 = new boolean[TOTAL_PROCESS_VALUES];
+        mCompareNumbers = new int[TOTAL_PROCESS_VALUES];
         mPortInput = port;
         mNumber = num;
         Thread listner = new NodeServerListener();
         listner.start();
         startBroadcastReceiver();
         mFaults = faultsNumber;
+        mNumberOfValues = (mFaults * 3) + 1;
         communication = new NetworkCommunication();
     }
 
@@ -173,12 +172,12 @@ public class Node {
                                 interpolate(values1[msg.getProcessType()], mFaults, false, false);
                                 interpolate(values2[msg.getProcessType()], mFaults, false, false);
                                 boolean isInterpolateGood = false;
-                                for (int i = 0; i < values1[msg.getProcessType()].length; i++) {
+                                for (int i = 0; i < mNumberOfValues; i++) {
                                     isInterpolateGood = isInterpolateGood || !values1[msg.getProcessType()][i].equals("0");
                                 }
                                 if (isInterpolateGood) {
                                     isInterpolateGood = false;
-                                    for (int i = 0; i < values2[msg.getProcessType()].length; i++) {
+                                    for (int i = 0; i < mNumberOfValues; i++) {
                                         isInterpolateGood = isInterpolateGood || !values2[msg.getProcessType()][i].equals("0");
                                     }
                                     if (isInterpolateGood) {
@@ -192,8 +191,10 @@ public class Node {
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
                                         }
-                                        waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 2);
-                                        waitForOks[msg.getProcessType()].start();
+                                        if(waitForOks[msg.getProcessType()].getRound()!=2) {
+                                            waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 2);
+                                            waitForOks[msg.getProcessType()].start();
+                                        }
                                     }
                                 }
                             }
@@ -246,11 +247,11 @@ public class Node {
         @Override
         public void run() {
             //Assume all the process is done
-            while (mComplaintNumber[mProcessType] != mComplaintResponseNumber[mProcessType]) {
+            while (mComplaintNumber[mProcessType] < mComplaintResponseNumber[mProcessType]) {
                 try {
                     attemptNumbers++;
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
-                        for (int i = 0; i < values2.length; i++) {
+                        for (int i = 0; i < mNumberOfValues; i++) {
                             values1[mProcessType][i] = "0";
                             values2[mProcessType][i] = "0";
                         }
@@ -265,7 +266,7 @@ public class Node {
             }
             values1[mProcessType] = interpolate(values1[mProcessType], mFaults, false, false);
             values2[mProcessType] = interpolate(values2[mProcessType], mFaults, false, false);
-            for (int i = 0; i < values1.length; i++) {
+            for (int i = 0; i < mNumberOfValues; i++) {
                 if (!values1[mProcessType][i].equals("0") || !values2[mProcessType][i].equals("0")) {
                     Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
                     broadcast(msg, broadCasterSocket);
@@ -281,7 +282,7 @@ public class Node {
 
     public class WaitForOk extends Thread {
         int attemptNumbers = 0;
-        int TOTAL_ATTEMPTS = 3;
+        int TOTAL_ATTEMPTS = 5;
         int mProcessType = -1;
         int n;
         int f;
@@ -293,9 +294,10 @@ public class Node {
 
         public WaitForOk(int processType, int OkNumber) {
             mProcessType = processType;
-            n = values1.length;
-            f = values1.length / 3;
             okRound = OkNumber;
+        }
+         int getRound(){
+            return mProcessType;
         }
 
         @Override
@@ -306,14 +308,14 @@ public class Node {
                 checkOkArray = mOkNumber;
             else
                 checkOkArray = mOk2Number;
-            while (checkOkArray[mProcessType] + 1 < n - f - 1) {
+            while (checkOkArray[mProcessType] + 1 < mNumberOfValues - mFaults - 1) {
                 try {
                     attemptNumbers++;
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
-                        for (int i = 0; i < values2.length; i++) {
+                        for (int i = 0; i < mNumberOfValues; i++) {
                             values1[mProcessType][i] = "0";
                             values2[mProcessType][i] = "0";
-                            System.out.println(mNumber + " Failed to save values");
+                            System.out.println(mNumber + " Failed to save values in round " + okRound);
                         }
                         return; // Or send faile
                     }
@@ -362,7 +364,7 @@ public class Node {
                     if (msg.isCompare()) {
                         mCompareNumbers[msg.getProcessType()]++;
                         handleCompares(msg);
-                        int waitForCompares = (values1.length) - 1;
+                        int waitForCompares = (mNumberOfValues) - 1;
                         if (waitForCompares == mCompareNumbers[msg.getProcessType()]) {
                             if (confirmValuesThread == null) {
                                 confirmValuesThread = new ConfirmValues(msg.getProcessType());

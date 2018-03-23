@@ -88,9 +88,9 @@ public class Functions {
             for (int i = 0; i < vals.length; i++) {
                 vals[i] = "0";
             }
-            System.out.println("bad polynomial");
+       //     System.out.println("bad polynomial");
         } else {
-            System.out.println("good polynomial");
+          //  System.out.println("good polynomial");
         }
         return vals;
     }
