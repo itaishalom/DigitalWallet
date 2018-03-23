@@ -31,22 +31,26 @@ public class Node {
     protected int[] mComplaintResponseNumber;
     private String[][] values1;
     private String[][] values2;
-    private boolean valuesAreReady = false;
+    private boolean[] valuesAreReady;
+    ;
     private int[] mCompareNumbers;
-    private ConfirmValues confirmValuesThread = null;
+    private ConfirmValues[] confirmValuesThread;
     private boolean[] mIOk;
     private int mFaults;
     private WaitForOk[] waitForOks;
-    private boolean haveIFinished = false;
+    private boolean[] haveIFinished ;
     NetworkCommunication communication;
     protected int mNumberOfValues;
     protected boolean[] ProtocolDone;
 
 
     public Node(int num, int port, int faultsNumber) {
+        haveIFinished = new boolean[TOTAL_PROCESS_VALUES];
+        valuesAreReady = new boolean[TOTAL_PROCESS_VALUES];
         ProtocolDone = new boolean[TOTAL_PROCESS_VALUES];
         values1 = new String[TOTAL_PROCESS_VALUES][];
         values2 = new String[TOTAL_PROCESS_VALUES][];
+        confirmValuesThread = new ConfirmValues[TOTAL_PROCESS_VALUES];
         waitForOks = new WaitForOk[TOTAL_PROCESS_VALUES];
         mComplaintNumber = new int[TOTAL_PROCESS_VALUES];
         mOkNumber = new int[TOTAL_PROCESS_VALUES];
@@ -125,10 +129,14 @@ public class Node {
                     case OK: {
                         mOkNumber[msg.getProcessType()]++;
                         print(mNumber + " oks: " + mOkNumber[msg.getProcessType()] + " mIOk? " + mIOk[msg.getProcessType()]);
-                        if (mOkNumber[msg.getProcessType()] == mNumberOfValues - 1 && mIOk[msg.getProcessType()]) {
-                            printResults(msg.getProcessType(), 1);
-                            ProtocolDone[msg.getProcessType()] = true;
-                        }
+                            if (mOkNumber[msg.getProcessType()] == mNumberOfValues - 1 && mIOk[msg.getProcessType()] && !ProtocolDone[msg.getProcessType()]) {
+
+                                printResults(msg.getProcessType(), 1);
+                                ProtocolDone[msg.getProcessType()] = true;
+                                Message notifyEnd = new Message(mNumber, msg.getProcessType(), BROADCAST, PROTOCOL_COMPLETE, "1");
+                                broadcast(notifyEnd, broadCasterSocket);
+                            }
+
                         break;
                     }
                     case OK2: {
@@ -161,7 +169,7 @@ public class Node {
                         break;
                     }
                     case NO_OK_ANSWER: {
-                        if (haveIFinished)
+                        if (haveIFinished[msg.getProcessType()])
                             return;
                         if (mIOk[msg.getProcessType()]) {         // Condition 1
                             String theInfo = msg.getmInfo();
@@ -190,13 +198,14 @@ public class Node {
                                         Message ok2Broadcast = new Message(mNumber, msg.getProcessType(), BROADCAST, OK2, "done");
                                         broadcast(ok2Broadcast, socket);
                                         try {
+
                                             waitForOks[msg.getProcessType()].join();
-                                            if (haveIFinished)
+                                            if (haveIFinished[msg.getProcessType()])
                                                 return;
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
                                         }
-                                        if (waitForOks[msg.getProcessType()].getRound() != 2 && !haveIFinished) {
+                                        if (waitForOks[msg.getProcessType()].getRound() != 2 && !haveIFinished[msg.getProcessType()]) {
                                             waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 2);
                                             waitForOks[msg.getProcessType()].start();
                                         }
@@ -264,6 +273,7 @@ public class Node {
                                 mComplaintResponseNumber[mProcessType] + " responses - protocol failed");
                         return; // Or send faile
                     }
+                    System.out.println(mNumber + " not enough complaint answers");
                     Thread.sleep(5000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -287,38 +297,40 @@ public class Node {
                 System.out.println("Node " + mNumber + " is out");
                 return;
             }
-            Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
-            broadcast(msg, broadCasterSocket);
-            mIOk[msg.getProcessType()] = true;
+            if(!mIOk[mProcessType]) {
+                Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
+                broadcast(msg, broadCasterSocket);
+                mIOk[msg.getProcessType()] = true;
 
-            waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 1);
-            waitForOks[msg.getProcessType()].start();
+                waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 1);
+                waitForOks[msg.getProcessType()].start();
+            }
         }
     }
 
 
     public void print(String s) {
-        if (mNumber == 3)
-            System.out.println(s);
+      //  if (mNumber == 4)
+       //     System.out.println(s);
     }
 
     public class WaitForOk extends Thread {
         int attemptNumbers = 0;
         int TOTAL_ATTEMPTS = 5;
-        int mProcessType = -1;
+        int okProcNumber;
         int okRound;
 
         public int getProcessType() {
-            return mProcessType;
+            return okProcNumber;
         }
 
         public WaitForOk(int processType, int OkNumber) {
-            mProcessType = processType;
+            okProcNumber = processType;
             okRound = OkNumber;
         }
 
         int getRound() {
-            return mProcessType;
+            return okRound;
         }
 
         @Override
@@ -329,16 +341,16 @@ public class Node {
                 checkOkArray = mOkNumber;
             else
                 checkOkArray = mOk2Number;
-            while (checkOkArray[mProcessType] + 1 < mNumberOfValues - mFaults - 1) {
+            while (checkOkArray[okProcNumber] + 1 < mNumberOfValues - mFaults - 1) {
                 try {
                     attemptNumbers++;
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
                         for (int i = 0; i < mNumberOfValues; i++) {
-                            values1[mProcessType][i] = "0";
-                            values2[mProcessType][i] = "0";
+                            values1[okProcNumber][i] = "0";
+                            values2[okProcNumber][i] = "0";
                         }
                         System.out.println(mNumber + " Failed to save values in round " + okRound);
-                        haveIFinished = true;
+                        haveIFinished[okProcNumber] = true;
                         return; // Or send faile
                     }
                     Thread.sleep(5000);
@@ -346,18 +358,26 @@ public class Node {
                     e.printStackTrace();
                 }
             }
-            if (okRound == 1) {
-                if (mOkNumber[mProcessType] == mNumberOfValues - 1 && mIOk[mProcessType]) {
-                    printResults(mProcessType, okRound);
-                    ProtocolDone[mProcessType] = true;
-                    haveIFinished = true;
+        /*    if (okRound == 1) {
+                if (mOkNumber[okProcNumber] == mNumberOfValues - 1 && mIOk[okProcNumber] && !ProtocolDone[okProcNumber]) {
+                    if(mNumber == 4){
+                        System.out.println("c");
+                    }
+                    printResults(okProcNumber, okRound);
+                    ProtocolDone[okProcNumber] = true;
+                    haveIFinished[okProcNumber] = true;
+                    Message notifyEnd = new Message(mNumber, okProcNumber, BROADCAST, PROTOCOL_COMPLETE, String.valueOf(okRound));
+                    broadcast(notifyEnd, broadCasterSocket);
                     return;
                 }
-            }
+            }*/
             if (okRound == 2) {
-                printResults(mProcessType, okRound);
-                haveIFinished = true;
-                ProtocolDone[mProcessType] = true;
+
+                printResults(okProcNumber, okRound);
+                haveIFinished[okProcNumber] = true;
+                ProtocolDone[okProcNumber] = true;
+                Message notifyEnd = new Message(mNumber, okProcNumber, BROADCAST, PROTOCOL_COMPLETE, String.valueOf(okRound));
+                broadcast(notifyEnd, broadCasterSocket);
                 // System.out.println(Arrays.toString(values1[mProcessType]));
                 //   System.out.println(Arrays.toString(values2[mProcessType]));
             }
@@ -365,10 +385,11 @@ public class Node {
 
     }
 
-    public void printResults(int mProcessType, int round) {
-        System.out.println(mNumber + " Saved Values on round: " + round + " \n"
-                + "va1: " + Arrays.asList(values1[mProcessType]) + "\n"
-                + "va2: " + Arrays.asList(values2[mProcessType]));
+    public void printResults(int processType, int round) {
+        String processName = getProcessFromNumber(processType);
+        System.out.println(mNumber + " Saved Values on round: " + round + " on process " + processName + " \n"
+                + "va1: " + Arrays.asList(values1[processType]) + "\n"
+                + "va2: " + Arrays.asList(values2[processType]));
     }
 
 
@@ -397,21 +418,19 @@ public class Node {
                 if (msg.isPrivate()) {
                     if (msg.isValues()) {
                         handleInitialValues(msg);
-                        confirmValuesThread = null;
+                        confirmValuesThread[msg.getProcessType()] = null;
                     }
                     if (msg.isCompare()) {
                         mCompareNumbers[msg.getProcessType()]++;
                         handleCompares(msg);
                         int waitForCompares = (mNumberOfValues) - 1;
                         if (waitForCompares == mCompareNumbers[msg.getProcessType()]) {
-                            if (confirmValuesThread == null) {
-                                confirmValuesThread = new ConfirmValues(msg.getProcessType());
-                                confirmValuesThread.start();
+                            if (confirmValuesThread[msg.getProcessType()] == null) {
+                                confirmValuesThread[msg.getProcessType()] = new ConfirmValues(msg.getProcessType());
+                                confirmValuesThread[msg.getProcessType()].start();
                             }
                         }
                     }
-                } else {
-                    print("Incoming Broadcast " + msg.toString());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -424,17 +443,17 @@ public class Node {
          * @param info
          */
         private void handleInitialValues(Message info) {
-            valuesAreReady = false;
+            valuesAreReady[info.getProcessType()] = false;
             String[] parts = info.getmInfo().split("\\|");
             String[] val1 = parts[0].split(",");
-        /*    if (mNumber == 1)
-                val1[0] = "1123"; // fuck node 1*/
+            if (mNumber == 1)
+                val1[0] = "1123"; // fuck node 1
             String[] val2 = parts[1].split(",");
 
 
             values1[info.getProcessType()] = interpolate(val1, mFaults, false, false);
             values2[info.getProcessType()] = interpolate(val2, mFaults, false, false);
-            valuesAreReady = true;
+            valuesAreReady[info.getProcessType()] = true;
             for (Node node : mAllNodes) {
                 if (node.mNumber == mNumber)
                     continue;
@@ -449,16 +468,12 @@ public class Node {
             String info = compareMsg.getmInfo();
             int from = compareMsg.getmFrom();
             String[] parts = info.split("\\|");
-            while (!valuesAreReady) {
+            while (!valuesAreReady[compareMsg.getProcessType()]) {
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-            }
-            if(values1[compareMsg.getProcessType()] == null || values2[compareMsg.getProcessType()] == null)
-            {
-                System.out.println("stop");
             }
             if (values1[compareMsg.getProcessType()][from - 1].equals(parts[1]) && values2[compareMsg.getProcessType()][from - 1].equals(parts[0])) {
                 //   System.out.println("all good");

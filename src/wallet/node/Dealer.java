@@ -57,7 +57,7 @@ public class Dealer extends Node {
         public void run() {
             while (!ProtocolDone[KEY]) {
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(20000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -98,6 +98,13 @@ public class Dealer extends Node {
             while (running) {
                 Message msg = getMessageFromBroadcast();
                 switch (msg.getmSubType()) {
+                    case PROTOCOL_COMPLETE:
+                        if(!ProtocolDone[msg.getProcessType()]) {
+                            ProtocolDone[msg.getProcessType()] = true;
+                            printResults(msg.getProcessType(),Integer.valueOf(msg.getmInfo()));
+
+                        }
+                        break;
                     case COMPLAINT: {
                         mComplaintNumber[msg.getProcessType()]++;
                         String data = msg.getmInfo();
@@ -144,8 +151,8 @@ public class Dealer extends Node {
                 while (counter < mNumberOfValues - mFaults) {
                     Thread.sleep(5000);
                     counter = 0;
-                    for (int i = 0; i < okCounter[mProcessType].length; i++) {
-                        if (okCounter[mProcessType][i])
+                    for (int i = 0; i < okCounter[okProcNumber].length; i++) {
+                        if (okCounter[okProcNumber][i])
                             counter++;
                     }
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
@@ -154,18 +161,20 @@ public class Dealer extends Node {
                     }
                 }
                 boolean isProtocolDone = true;
-                for (int i = 0; i < okCounter[mProcessType].length; i++) {
-                    if (!okCounter[mProcessType][i]) {
-                        String answer = buildInitialValues(i + 1, q[mProcessType], p[mProcessType]);
-                        Message msg = new Message(mNumber, mProcessType, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
+                for (int i = 0; i < okCounter[okProcNumber].length; i++) {
+                    if (!okCounter[okProcNumber][i]) {
+                        String answer = buildInitialValues(i + 1, q[okProcNumber], p[okProcNumber]);
+                        Message msg = new Message(mNumber, okProcNumber, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
                         broadcast(msg, broadCasterSocket);
                         isProtocolDone = false;
                     }
                 }
 
-                if (isProtocolDone) {
-                    printResults(mProcessType, 1);
-                    ProtocolDone[mProcessType] = true;
+                if (isProtocolDone && !ProtocolDone[okProcNumber]) {
+                    System.out.println("shit2");
+                    ProtocolDone[okProcNumber] = true;
+                    printResults(okProcNumber, 1);
+
                 }
 
             } catch (InterruptedException e) {

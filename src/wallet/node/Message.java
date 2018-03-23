@@ -14,6 +14,7 @@ public class Message {
     public static final String COMPLAINT = "complaint";
     public static final String COMPLAINT_ANSWER = "complaint_answer";
     public static final String NO_OK_ANSWER = "no_ok_answer";
+    public static final String PROTOCOL_COMPLETE = "protocol_complete";
     public static final String LOCAL_HOST = "localhost";
 
     public static final int KEY = 0;
@@ -23,6 +24,19 @@ public class Message {
     public static final int TOTAL_PROCESS_VALUES = 4;
 
 
+    public static String getProcessFromNumber(int num) {
+        switch (num) {
+            case KEY:
+                return "KEY";
+            case VALUE:
+                return "VALUE";
+            case CLIENT_1:
+                return "CLIENT_1";
+            case CLIENT_2:
+                return "CLIENT_2";
+        }
+        return null;
+    }
 
     private int mFrom;
     private String mType;
@@ -30,7 +44,7 @@ public class Message {
     private String mInfo;
     private int mProcessType;
 
-    public Message(int from,int processType, String type, String subType, String info) {
+    public Message(int from, int processType, String type, String subType, String info) {
         mFrom = from;
         mProcessType = processType;
         mType = type;
@@ -38,7 +52,7 @@ public class Message {
         mInfo = info;
     }
 
-    public int getProcessType(){
+    public int getProcessType() {
         return mProcessType;
     }
 
