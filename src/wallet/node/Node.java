@@ -76,6 +76,15 @@ public class Node {
         broadcastReceiver.start();
     }
 
+    public double calculateG()
+    {
+        double key = Functions.predict(values1[KEY], mFaults, 0);
+        double key2 = Functions.predict(values1[KEY_TAG], mFaults, 0);
+        double randPloy = Functions.predict(values1[RANDOM_VALUES], mFaults, 0);
+
+        return randPloy*(key-key2);
+    }
+
     public void setNodes(Node[] nodes) {
         mAllNodes = nodes;
     }
