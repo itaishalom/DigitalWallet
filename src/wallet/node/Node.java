@@ -37,7 +37,7 @@ public class Node {
     private boolean[] mIOk;
     private int mFaults;
     private WaitForOk[] waitForOks;
-    private boolean[] haveIFinished ;
+    private boolean[] haveIFinished;
     NetworkCommunication communication;
     protected int mNumberOfValues;
     protected boolean[] ProtocolDone;
@@ -78,11 +78,11 @@ public class Node {
 
     public void calculateG() {
         double key = (int) Functions.predict(values1[KEY], mFaults, 0);
-        double key2 =(int) Functions.predict(values1[KEY_TAG], mFaults, 0);
-        double randPloy =(int) Functions.predict(values1[RANDOM_VALUES], mFaults, 0);
-        String info = String.valueOf(randPloy*(key-key2));
-        Message msg = new Message(mNumber,KEY_TAG,BROADCAST,G_VALUES,info);
-        broadcast(msg,broadCasterSocket);
+        double key2 = (int) Functions.predict(values1[KEY_TAG], mFaults, 0);
+        double randPloy = (int) Functions.predict(values1[RANDOM_VALUES], mFaults, 0);
+        String info = String.valueOf(randPloy * (key - key2));
+        Message msg = new Message(mNumber, KEY_TAG, BROADCAST, G_VALUES, info);
+        broadcast(msg, broadCasterSocket);
     }
 
     public void setNodes(Node[] nodes) {
@@ -98,8 +98,9 @@ public class Node {
         public void shutdown() {
             running = false;
         }
+
         protected DatagramSocket socket;
-        protected boolean running =true;
+        protected boolean running = true;
         protected byte[] buf = new byte[1024];
         protected Message msg;
 
@@ -110,8 +111,6 @@ public class Node {
                 e.printStackTrace();
             }
         }
-
-
 
 
         protected Message getMessageFromBroadcast() {
@@ -142,14 +141,14 @@ public class Node {
                     case OK: {
                         mOkNumber[msg.getProcessType()]++;
                         print(mNumber + " oks: " + mOkNumber[msg.getProcessType()] + " mIOk? " + mIOk[msg.getProcessType()]);
-                            if (mOkNumber[msg.getProcessType()] == mNumberOfValues - 1 && mIOk[msg.getProcessType()] && !ProtocolDone[msg.getProcessType()]) {
+                        if (mOkNumber[msg.getProcessType()] == mNumberOfValues - 1 && mIOk[msg.getProcessType()] && !ProtocolDone[msg.getProcessType()]) {
 
-                                printResults(msg.getProcessType(), 1);
-                                ProtocolDone[msg.getProcessType()] = true;
-                                Message notifyEnd = new Message(mNumber, msg.getProcessType(), BROADCAST, PROTOCOL_COMPLETE, "1");
-                                broadcast(notifyEnd, broadCasterSocket);
-                                calculateG();
-                            }
+                            printResults(msg.getProcessType(), 1);
+                            ProtocolDone[msg.getProcessType()] = true;
+                            Message notifyEnd = new Message(mNumber, msg.getProcessType(), BROADCAST, PROTOCOL_COMPLETE, "1");
+                            broadcast(notifyEnd, broadCasterSocket);
+                            calculateG();
+                        }
 
                         break;
                     }
@@ -263,10 +262,41 @@ public class Node {
         }
     }
 
+    public class calculateGs extends Thread {
+        int attemptNumbers = 0;
+        int TOTAL_ATTEMPTS = 3;
+        int mProcessType = -1;
+
+        public calculateGs(int processType) {
+            mProcessType = processType;
+        }
+
+        @Override
+        public void run() {
+            //Assume all the process is done
+            while (mComplaintNumber[mProcessType] < mComplaintResponseNumber[mProcessType]) {
+                attemptNumbers++;
+                if (attemptNumbers == TOTAL_ATTEMPTS) {
+                    for (int i = 0; i < mNumberOfValues; i++) {
+                        values1[mProcessType][i] = "0";
+                        values2[mProcessType][i] = "0";
+                    }
+                }
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }
+    }
+
     public class ConfirmValues extends Thread {
         int attemptNumbers = 0;
         int TOTAL_ATTEMPTS = 3;
         int mProcessType = -1;
+
 
         public ConfirmValues(int processType) {
             mProcessType = processType;
@@ -311,7 +341,7 @@ public class Node {
                 System.out.println("Node " + mNumber + " is out");
                 return;
             }
-            if(!mIOk[mProcessType]) {
+            if (!mIOk[mProcessType]) {
                 Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
                 mIOk[msg.getProcessType()] = true;
                 broadcast(msg, broadCasterSocket);
@@ -325,8 +355,8 @@ public class Node {
 
 
     public void print(String s) {
-    //    if (mNumber == 1)
-            System.out.println(s);
+        //    if (mNumber == 1)
+        System.out.println(s);
     }
 
     public class WaitForOk extends Thread {
