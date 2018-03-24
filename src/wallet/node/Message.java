@@ -19,7 +19,7 @@ public class Message {
 
     public static final int KEY = 0;
     public static final int VALUE = 1;
-    public static final int RANDOM_VALUES = 2;
+    public static final int RANDOM_VALUES = 2;  //Done
     public static final int KEY_TAG = 3;
     public static final int TOTAL_PROCESS_VALUES = 4;
 
