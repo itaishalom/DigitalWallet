@@ -36,9 +36,9 @@ public class Client extends Dealer {
         p[0] = createArrayOfCoefs();
         p[0][0] = mRandom.nextInt(boundForRandom);
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
-            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, CLIENT_1);
+            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, RANDOM_VALUES);
         }
-        waitForProcessEnd wait = new waitForProcessEnd(key, CLIENT_2, CLIENT_1, "Sending key' bi-polynomial");
+        waitForProcessEnd wait = new waitForProcessEnd(key, CLIENT_2, RANDOM_VALUES, "Sending key' bi-polynomial");
         wait.start();
     }
 
