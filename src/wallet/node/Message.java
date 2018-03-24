@@ -19,8 +19,8 @@ public class Message {
 
     public static final int KEY = 0;
     public static final int VALUE = 1;
-    public static final int CLIENT_1 = 2;
-    public static final int CLIENT_2 = 3;
+    public static final int RANDOM_VALUES = 2;
+    public static final int KEY_TAG = 3;
     public static final int TOTAL_PROCESS_VALUES = 4;
 
 
@@ -30,10 +30,10 @@ public class Message {
                 return "KEY";
             case VALUE:
                 return "VALUE";
-            case CLIENT_1:
-                return "CLIENT_1";
-            case CLIENT_2:
-                return "CLIENT_2";
+            case RANDOM_VALUES:
+                return "RANDOM_VALUES";
+            case KEY_TAG:
+                return "KEY_TAG";
         }
         return null;
     }
