@@ -1,5 +1,9 @@
 package wallet.node;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.Socket;
+
 import static wallet.node.Functions.broadcast;
 import static wallet.node.Message.*;
 import static wallet.node.Message.COMPLAINT_ANSWER;
@@ -9,8 +13,11 @@ import static wallet.node.Message.OK;
  * Created by Itai on 24/03/2018.
  */
 public class Client extends Dealer {
+    String[] QvValues;
+
     public Client(int num, int port, int f) {
-        super(num, port, f);
+        super(num, port, f, port);
+        QvValues = new String[(3 * f) + 1];
     }
 
     @Override
@@ -38,10 +45,45 @@ public class Client extends Dealer {
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
             calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, RANDOM_VALUES);
         }
-        waitForProcessEnd wait = new waitForProcessEnd(key, CLIENT_2, RANDOM_VALUES, "Sending key' bi-polynomial");
+        waitForProcessEnd wait = new waitForProcessEnd(key, KEY_TAG, RANDOM_VALUES, "Sending key' bi-polynomial");
         wait.start();
     }
 
+    @Override
+    protected void startSession(Socket socket) {
+        Thread a = new CleintIncomeDataHandler(socket);//, listening, allSocks);    //The session class gets the connected socket to handle
+        a.start();    //If true, start the session
+    }
+
+    public class CleintIncomeDataHandler extends Thread {
+        Socket mSocket;
+
+        private CleintIncomeDataHandler(Socket incomeSocket) {
+            mSocket = incomeSocket;
+        }
+
+        @Override
+        public void run() {
+            try {
+                InputStream is = mSocket.getInputStream();
+                byte[] buffer = new byte[1024];
+                int read;
+                Message msg = null;
+                read = is.read(buffer);
+                String output = new String(buffer, 0, read);
+                print("To: " + mNumber + " from " + output);
+                System.out.flush();
+                msg = new Message(output);
+                System.out.println(msg);
+                if (msg.getmSubType().equals(Qv_VALUE)){
+                    QvValues[msg.getmFrom()-1] = msg.getmInfo();
+                }
+                    mSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
     public class BroadcastReceiverClient extends BroadcastReceiver {
 

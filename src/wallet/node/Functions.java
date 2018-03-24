@@ -74,6 +74,22 @@ public class Functions {
         return 0;
     }
 
+    static long interpolateRobust(String[] vals, int f, int value) {
+        double[] y = new double[vals.length];
+        for (int i = 0; i < vals.length; i++) {
+            y[i] = Double.parseDouble(vals[i]);
+        }
+/*        if (mNumber == 1 && confirmValuesThread == null)         // Fuck node 1
+            y[1] += 2.0;*/
+        //        y[y.length-1] = y[y.length-1] *3;
+        double[] x = new double[vals.length];
+        for (int i = 0; i < x.length; i++) {
+            x[i] = i + 1;
+        }
+        return combine(x, y, f + 1, value);
+    }
+
+
     static String[] interpolate(String[] vals, int f, boolean isRobust, boolean returnNullIfFails) {
 
         double[] y = new double[vals.length];
@@ -89,12 +105,8 @@ public class Functions {
         }
         //     y[0] = 300;
 
-        boolean condition;
-        if (isRobust) {
-            condition = combine(x, y, f + 1);
-        } else {
-            condition = (new PolynomialRegression(x, y, f)).R2() == 1.0;
-        }
+        boolean condition = (new PolynomialRegression(x, y, f)).R2() == 1.0;
+
         if (!condition) {
             if (returnNullIfFails)
                 return null;
@@ -108,31 +120,36 @@ public class Functions {
         return vals;
     }
 
-    private static boolean combine(double[] arrX, double[] arrY, int r) {
+    private static long combine(double[] arrX, double[] arrY, int r, int value) {
         double[] resX = new double[r];
         double[] resY = new double[r];
-        return doCombine(arrX, resX, arrY, resY, 0, 0, r);
+        return doCombine(arrX, resX, arrY, resY, 0, 0, r, value);
     }
 
-    private static boolean doCombine(double[] arrX, double[] resX, double[] arrY, double[] resY, int currIndex, int level, int r) {
+    private static long doCombine(double[] arrX, double[] resX, double[] arrY, double[] resY, int currIndex, int level, int r, int value) {
         if (level == r) {
-            return printArray(resX, resY, r);
+            return printArray(resX, resY, r, value);
         }
         for (int i = currIndex; i < arrX.length; i++) {
             resX[level] = arrX[i];
             resY[level] = arrY[i];
-            if (doCombine(arrX, resX, arrY, resY, i + 1, level + 1, r))
-                return true;
+            long val = doCombine(arrX, resX, arrY, resY, i + 1, level + 1, r,value);
+            if(val != -1)
+                return val;
             //way to avoid printing duplicates
             if (i < arrX.length - 1 && arrX[i] == arrX[i + 1]) {
                 i++;
             }
         }
-        return false;
+        return -1;
     }
 
-    private static boolean printArray(double[] resX, double[] resY, int f) {
-        return (new PolynomialRegression(resX, resY, f).R2() == 1.0);
+    private static long printArray(double[] resX, double[] resY, int f, int value) {
+        PolynomialRegression p = new PolynomialRegression(resX, resY, f);
+        if (p.R2() == 1.0) {
+            return Math.round(p.predict(value));
+        }
+        return -1;
     }
 
 

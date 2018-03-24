@@ -20,8 +20,8 @@ public class Dealer extends Node {
     Thread broadcastReceiver;
     BroadcastReceiver container;
 
-    public Dealer(int num, int port, int f) {
-        super(num, port, f);
+    public Dealer(int num, int port, int f,int clientPort) {
+        super(num, port, f,clientPort);
         q = new int[2][];
         p = new int[2][];
         okCounter = new boolean[TOTAL_PROCESS_VALUES][(3 * f) + 1];

@@ -13,18 +13,19 @@ public class Wallet implements WalletInterface {
     private Dealer dealer;
     private Client client;
     private int n;
-    private int firstPort= 8090;
-    private int mFaults ;
+    private int firstPort = 8090;
+    private int mFaults;
 
     public Wallet(int f) {
+        int clientPort = firstPort + n + 1;
         mFaults = f;
         n = 3 * f + 1;
         nodes = new Node[n];
         for (int i = 0; i < n - 1; i++) {
-            nodes[i] = new Node(i + 1, firstPort, f);
+            nodes[i] = new Node(i + 1, firstPort, f,clientPort);
             firstPort++;
         }
-        dealer = new Dealer(n,firstPort, f);
+        dealer = new Dealer(n, firstPort, f,clientPort);
         nodes[n - 1] = dealer;
         for (int i = 0; i < n; i++) {
             nodes[i].setNodes(nodes);
@@ -39,7 +40,7 @@ public class Wallet implements WalletInterface {
 
     @Override
     public Object retrieve(int key) {
-        while (!dealer.isStoreDone()){
+        while (!dealer.isStoreDone()) {
             try {
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
@@ -47,7 +48,7 @@ public class Wallet implements WalletInterface {
             }
         }
         dealer.switchReciever();
-        client = new Client(n+1,++firstPort,mFaults);
+        client = new Client(n + 1, ++firstPort, mFaults);
         client.setNodes(nodes);
         client.startProcess(key);
         return null;
