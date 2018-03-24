@@ -73,7 +73,7 @@ public class Node {
     }
 
     protected void startBroadcastReceiver() {
-        Thread broadcastReceiver = new BroadcastReceiver();
+        Thread broadcastReceiver = new Thread(new BroadcastReceiver());
         broadcastReceiver.start();
     }
 
@@ -86,10 +86,10 @@ public class Node {
         return obj != null && Node.class.isAssignableFrom(obj.getClass()) && ((((Node) obj).mPortInput) == this.mPortInput);
     }
 
-    public class BroadcastReceiver extends Thread {
+    public class BroadcastReceiver implements Runnable {
 
         protected DatagramSocket socket;
-        protected boolean running;
+        protected boolean running =true;
         protected byte[] buf = new byte[1024];
         protected Message msg;
 
@@ -99,6 +99,11 @@ public class Node {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+
+
+        public void shutdown() {
+            running = false;
         }
 
         protected Message getMessageFromBroadcast() {
@@ -115,7 +120,7 @@ public class Node {
         }
 
         public void run() {
-            running = true;
+
             while (running) {
                 Message msg = getMessageFromBroadcast();
                 if (msg.getmFrom() == mNumber)
@@ -447,8 +452,8 @@ public class Node {
             valuesAreReady[info.getProcessType()] = false;
             String[] parts = info.getmInfo().split("\\|");
             String[] val1 = parts[0].split(",");
-            if (mNumber == 1 && info.getProcessType() ==1)
-                val1[0] = "1123"; // fuck node 1
+          /*  if (mNumber == 1 && info.getProcessType() ==1)
+                val1[0] = "1123"; // fuck node 1*/
             String[] val2 = parts[1].split(",");
 
 

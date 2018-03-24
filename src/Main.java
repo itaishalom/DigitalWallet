@@ -12,6 +12,7 @@ public class Main {
         System.out.println(p.R2());*/
         Wallet myWallet = new Wallet(1);
         myWallet.store(1,32);
+        myWallet.retrieve(1);
     }
 
 

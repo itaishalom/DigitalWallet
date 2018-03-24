@@ -11,18 +11,17 @@ import static wallet.node.Message.*;
  */
 public class Dealer extends Node {
     private int mFaults;
-    private Random mRandom;
-    private int boundForRandom;
-    private int[][] q;
-    private int[][] p;
+     Random mRandom;
+     int boundForRandom;
+     int[][] q;
+     int[][] p;
+     boolean[][] okCounter;
+     Thread[] waitForOks;
+    Thread broadcastReceiver;
+    BroadcastReceiver container;
 
-    private boolean[][] okCounter;
-    private Thread[] waitForOks;
-
-
-    public Dealer(int port, int f) {
-
-        super(3 * f + 1, port, f);
+    public Dealer(int num, int port, int f) {
+        super(num, port, f);
         q = new int[2][];
         p = new int[2][];
         okCounter = new boolean[TOTAL_PROCESS_VALUES][(3 * f) + 1];
@@ -30,6 +29,10 @@ public class Dealer extends Node {
         mFaults = f;
         mRandom = new Random();
         boundForRandom = generatePrime(mFaults);
+    }
+
+    public boolean isStoreDone(){
+        return  ProtocolDone[VALUE];
     }
 
     public void startProcess(int key, int value) {
@@ -43,7 +46,6 @@ public class Dealer extends Node {
         }
         waitForProcessEnd wait = new waitForProcessEnd(value);
         wait.start();
-
     }
 
     public class waitForProcessEnd extends Thread {
@@ -64,7 +66,7 @@ public class Dealer extends Node {
                     e.printStackTrace();
                 }
                 attemptNumbers++;
-                if(attemptNumbers==TOTAL_ATTEMPTS){
+                if (attemptNumbers == TOTAL_ATTEMPTS) {
                     System.out.println("Failed Storing key");
                     return;
                 }
@@ -81,35 +83,40 @@ public class Dealer extends Node {
     }
 
 
-    private void calculateAndPrivateSendValues(int nodeNumber, int nodePort, int proccessNumber) {
+    protected void calculateAndPrivateSendValues(int nodeNumber, int nodePort, int proccessNumber) {
         String answer = buildInitialValues(nodeNumber, q[proccessNumber], p[proccessNumber]);
         Message msg = new Message(this.mNumber, proccessNumber, PRIVATE, INITIAL_VALUES, answer);
         communication.sendMessageToNode(nodePort, msg);
     }
 
+    public void switchReciever(){
+        container.shutdown();
+        super.startBroadcastReceiver();
+    }
+
 
     @Override
     protected void startBroadcastReceiver() {
-        Thread broadcastReceiver = new BroadcastReceiverDealer();
+        container = new BroadcastReceiverDealer();
+        broadcastReceiver = new Thread(container);
         broadcastReceiver.start();
     }
 
     public class BroadcastReceiverDealer extends BroadcastReceiver {
 
-        private BroadcastReceiverDealer() {
+        BroadcastReceiverDealer() {
             super();
         }
 
         @Override
         public void run() {
-            running = true;
             while (running) {
                 Message msg = getMessageFromBroadcast();
                 switch (msg.getmSubType()) {
                     case PROTOCOL_COMPLETE:
-                        if(!ProtocolDone[msg.getProcessType()]) {
+                        if (!ProtocolDone[msg.getProcessType()]) {
                             ProtocolDone[msg.getProcessType()] = true;
-                            printResults(msg.getProcessType(),Integer.valueOf(msg.getmInfo()));
+                            printResults(msg.getProcessType(), Integer.valueOf(msg.getmInfo()));
 
                         }
                         break;
@@ -190,6 +197,7 @@ public class Dealer extends Node {
             }
 
         }
+
     }
 
 
@@ -201,7 +209,7 @@ public class Dealer extends Node {
         return response.toString();
     }
 
-    private void buildResponse(StringBuilder response, int i, int[] q, int[] secondPoly) {
+    protected void buildResponse(StringBuilder response, int i, int[] q, int[] secondPoly) {
         long val1 = computePolynomial(q, i);
         for (int n = 0; n < mAllNodes.length; n++) {
             long val2 = computePolynomial(secondPoly, mAllNodes[n].mNumber);
@@ -219,7 +227,7 @@ public class Dealer extends Node {
      * @param x   - the value to calculate with
      * @return - The value of the polynomial in x.
      */
-    private long computePolynomial(int[] arr, int x) {
+    protected long computePolynomial(int[] arr, int x) {
         long res = 0;
         for (int i = 0; i < arr.length; i++) {
             res += arr[i] * Math.pow(x, i);
@@ -232,7 +240,7 @@ public class Dealer extends Node {
      *
      * @return - Array of coefficients
      */
-    private int[] createArrayOfCoefs() {
+    protected int[] createArrayOfCoefs() {
         int[] arr = new int[mFaults + 1];
         for (int i = 1; i < arr.length; i++) {
             arr[i] = mRandom.nextInt(boundForRandom);
