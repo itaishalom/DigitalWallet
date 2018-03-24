@@ -11,6 +11,7 @@ public class Message {
     public static final String COMPARE = "compare";
     public static final String OK = "ok";
     public static final String OK2 = "ok2";
+    public static final String G_VALUES = "g_values";
     public static final String COMPLAINT = "complaint";
     public static final String COMPLAINT_ANSWER = "complaint_answer";
     public static final String NO_OK_ANSWER = "no_ok_answer";

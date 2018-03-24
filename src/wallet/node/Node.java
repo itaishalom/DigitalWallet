@@ -76,13 +76,13 @@ public class Node {
         broadcastReceiver.start();
     }
 
-    public double calculateG()
-    {
-        double key = Functions.predict(values1[KEY], mFaults, 0);
-        double key2 = Functions.predict(values1[KEY_TAG], mFaults, 0);
-        double randPloy = Functions.predict(values1[RANDOM_VALUES], mFaults, 0);
-
-        return randPloy*(key-key2);
+    public void calculateG() {
+        double key = (int) Functions.predict(values1[KEY], mFaults, 0);
+        double key2 =(int) Functions.predict(values1[KEY_TAG], mFaults, 0);
+        double randPloy =(int) Functions.predict(values1[RANDOM_VALUES], mFaults, 0);
+        String info = String.valueOf(randPloy*(key-key2));
+        Message msg = new Message(mNumber,KEY_TAG,BROADCAST,G_VALUES,info);
+        broadcast(msg,broadCasterSocket);
     }
 
     public void setNodes(Node[] nodes) {
@@ -148,6 +148,7 @@ public class Node {
                                 ProtocolDone[msg.getProcessType()] = true;
                                 Message notifyEnd = new Message(mNumber, msg.getProcessType(), BROADCAST, PROTOCOL_COMPLETE, "1");
                                 broadcast(notifyEnd, broadCasterSocket);
+                                calculateG();
                             }
 
                         break;
@@ -392,6 +393,7 @@ public class Node {
                 ProtocolDone[okProcNumber] = true;
                 Message notifyEnd = new Message(mNumber, okProcNumber, BROADCAST, PROTOCOL_COMPLETE, String.valueOf(okRound));
                 broadcast(notifyEnd, broadCasterSocket);
+                calculateG();
                 // System.out.println(Arrays.toString(values1[mProcessType]));
                 //   System.out.println(Arrays.toString(values2[mProcessType]));
             }
