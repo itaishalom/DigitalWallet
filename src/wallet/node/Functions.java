@@ -15,7 +15,7 @@ import java.util.Objects;
 public class Functions {
 
 
-    static void broadcast(Message broadcastMessage, DatagramSocket socket ) {
+    static void broadcast(Message broadcastMessage, DatagramSocket socket) {
         List<InetAddress> broadcastList = null;
 
         try {
@@ -59,9 +59,22 @@ public class Functions {
     }
 
 
+    static double predict(String[] vals, int f, int nodeNumber) {
+        double[] y = new double[vals.length];
+        for (int i = 0; i < vals.length; i++) {
+            y[i] = Double.parseDouble(vals[i]);
+        }
+        double[] x = new double[vals.length];
+        for (int i = 0; i < x.length; i++) {
+            x[i] = i + 1;
+        }
+        PolynomialRegression p = new PolynomialRegression(x, y, f);
+        if (p.R2() == 1.0)
+            return p.predict(nodeNumber);
+        return 0;
+    }
 
-
-     static String[] interpolate(String[] vals, int f, boolean isRobust, boolean returnNullIfFails) {
+    static String[] interpolate(String[] vals, int f, boolean isRobust, boolean returnNullIfFails) {
 
         double[] y = new double[vals.length];
         for (int i = 0; i < vals.length; i++) {
@@ -74,44 +87,44 @@ public class Functions {
         for (int i = 0; i < x.length; i++) {
             x[i] = i + 1;
         }
-   //     y[0] = 300;
+        //     y[0] = 300;
 
-         boolean condition ;
-        if(isRobust){
-            condition = combine(x,y,f+1);
-        }else {
+        boolean condition;
+        if (isRobust) {
+            condition = combine(x, y, f + 1);
+        } else {
             condition = (new PolynomialRegression(x, y, f)).R2() == 1.0;
         }
         if (!condition) {
-            if(returnNullIfFails)
+            if (returnNullIfFails)
                 return null;
             for (int i = 0; i < vals.length; i++) {
                 vals[i] = "0";
             }
-       //     System.out.println("bad polynomial");
+            //     System.out.println("bad polynomial");
         } else {
-          //  System.out.println("good polynomial");
+            //  System.out.println("good polynomial");
         }
         return vals;
     }
 
-    private static boolean combine(double[] arrX,double[] arrY, int r) {
+    private static boolean combine(double[] arrX, double[] arrY, int r) {
         double[] resX = new double[r];
         double[] resY = new double[r];
-        return doCombine(arrX, resX,arrY,resY, 0, 0, r);
+        return doCombine(arrX, resX, arrY, resY, 0, 0, r);
     }
 
-    private static boolean doCombine(double[] arrX, double[] resX,double[] arrY, double[] resY, int currIndex, int level, int r) {
-        if(level == r){
+    private static boolean doCombine(double[] arrX, double[] resX, double[] arrY, double[] resY, int currIndex, int level, int r) {
+        if (level == r) {
             return printArray(resX, resY, r);
         }
         for (int i = currIndex; i < arrX.length; i++) {
             resX[level] = arrX[i];
             resY[level] = arrY[i];
-            if (doCombine(arrX, resX,arrY,resY, i+1, level+1, r))
+            if (doCombine(arrX, resX, arrY, resY, i + 1, level + 1, r))
                 return true;
             //way to avoid printing duplicates
-            if(i < arrX.length-1 && arrX[i] == arrX[i+1]){
+            if (i < arrX.length - 1 && arrX[i] == arrX[i + 1]) {
                 i++;
             }
         }
@@ -119,7 +132,7 @@ public class Functions {
     }
 
     private static boolean printArray(double[] resX, double[] resY, int f) {
-       return (new PolynomialRegression(resX, resY, f).R2() == 1.0);
+        return (new PolynomialRegression(resX, resY, f).R2() == 1.0);
     }
 
 

@@ -11,12 +11,12 @@ import static wallet.node.Message.*;
  */
 public class Dealer extends Node {
     private int mFaults;
-     Random mRandom;
-     int boundForRandom;
-     int[][] q;
-     int[][] p;
-     boolean[][] okCounter;
-     Thread[] waitForOks;
+    Random mRandom;
+    int boundForRandom;
+    int[][] q;
+    int[][] p;
+    boolean[][] okCounter;
+    Thread[] waitForOks;
     Thread broadcastReceiver;
     BroadcastReceiver container;
 
@@ -31,8 +31,8 @@ public class Dealer extends Node {
         boundForRandom = generatePrime(mFaults);
     }
 
-    public boolean isStoreDone(){
-        return  ProtocolDone[VALUE];
+    public boolean isStoreDone() {
+        return ProtocolDone[VALUE];
     }
 
     public void startProcess(int key, int value) {
@@ -42,9 +42,9 @@ public class Dealer extends Node {
         p[KEY] = createArrayOfCoefs();
         p[KEY][0] = 1;
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
-            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY);
+            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, KEY);
         }
-        waitForProcessEnd wait = new waitForProcessEnd(value);
+        waitForProcessEnd wait = new waitForProcessEnd(value, VALUE, KEY ,"Begin store value");
         wait.start();
     }
 
@@ -52,14 +52,20 @@ public class Dealer extends Node {
         int attemptNumbers = 0;
         int TOTAL_ATTEMPTS = 5;
         int mValue;
+        int mProcess;
+        int mEndProcess;
+        String mInfo;
 
-        waitForProcessEnd(int value) {
+        waitForProcessEnd(int value, int prosess, int endProcess, String message) {
             mValue = value;
+            mProcess = prosess;
+            mEndProcess = endProcess;
+            mInfo = message;
         }
 
         @Override
         public void run() {
-            while (!ProtocolDone[KEY]) {
+            while (!ProtocolDone[mEndProcess]) {
                 try {
                     Thread.sleep(20000);
                 } catch (InterruptedException e) {
@@ -71,25 +77,25 @@ public class Dealer extends Node {
                     return;
                 }
             }
-            System.out.println("############# Begin store value #############");
+            System.out.println("############# " + mInfo + "  #############");
             q[VALUE] = createArrayOfCoefs();
             q[VALUE][0] = mValue; // decide what to do
             p[VALUE] = createArrayOfCoefs();
             p[VALUE][0] = 1;
             for (Node node_i : mAllNodes) {  // Iterate over all Nodes
-                calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), VALUE);
+                calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), VALUE, mProcess);
             }
         }
     }
 
 
-    protected void calculateAndPrivateSendValues(int nodeNumber, int nodePort, int proccessNumber) {
+    protected void calculateAndPrivateSendValues(int nodeNumber, int nodePort, int proccessNumber, int messageProcess) {
         String answer = buildInitialValues(nodeNumber, q[proccessNumber], p[proccessNumber]);
-        Message msg = new Message(this.mNumber, proccessNumber, PRIVATE, INITIAL_VALUES, answer);
+        Message msg = new Message(this.mNumber, messageProcess, PRIVATE, INITIAL_VALUES, answer);
         communication.sendMessageToNode(nodePort, msg);
     }
 
-    public void switchReciever(){
+    public void switchReciever() {
         container.shutdown();
         super.startBroadcastReceiver();
     }
@@ -102,16 +108,24 @@ public class Dealer extends Node {
         broadcastReceiver.start();
     }
 
+
     public class BroadcastReceiverDealer extends BroadcastReceiver {
 
         BroadcastReceiverDealer() {
             super();
         }
 
+
+        public void shutdown() {
+            running = false;
+        }
+
         @Override
         public void run() {
             while (running) {
                 Message msg = getMessageFromBroadcast();
+                if (!running)
+                    return;
                 switch (msg.getmSubType()) {
                     case PROTOCOL_COMPLETE:
                         if (!ProtocolDone[msg.getProcessType()]) {
@@ -186,7 +200,6 @@ public class Dealer extends Node {
                 }
 
                 if (isProtocolDone && !ProtocolDone[okProcNumber]) {
-                    System.out.println("shit2");
                     ProtocolDone[okProcNumber] = true;
                     printResults(okProcNumber, 1);
 

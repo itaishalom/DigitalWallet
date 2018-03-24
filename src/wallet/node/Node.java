@@ -32,7 +32,6 @@ public class Node {
     private String[][] values1;
     private String[][] values2;
     private boolean[] valuesAreReady;
-    ;
     private int[] mCompareNumbers;
     private ConfirmValues[] confirmValuesThread;
     private boolean[] mIOk;
@@ -87,7 +86,9 @@ public class Node {
     }
 
     public class BroadcastReceiver implements Runnable {
-
+        public void shutdown() {
+            running = false;
+        }
         protected DatagramSocket socket;
         protected boolean running =true;
         protected byte[] buf = new byte[1024];
@@ -102,9 +103,7 @@ public class Node {
         }
 
 
-        public void shutdown() {
-            running = false;
-        }
+
 
         protected Message getMessageFromBroadcast() {
             DatagramPacket packet
@@ -317,7 +316,7 @@ public class Node {
 
     public void print(String s) {
     //    if (mNumber == 1)
-     //       System.out.println(s);
+            System.out.println(s);
     }
 
     public class WaitForOk extends Thread {

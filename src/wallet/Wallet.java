@@ -12,12 +12,13 @@ public class Wallet implements WalletInterface {
     private Node[] nodes;
     private Dealer dealer;
     private Client client;
-    int n;
-    int firstPort= 8090;
-    int f ;
+    private int n;
+    private int firstPort= 8090;
+    private int mFaults ;
 
     public Wallet(int f) {
-        int n = 3 * f + 1;
+        mFaults = f;
+        n = 3 * f + 1;
         nodes = new Node[n];
         for (int i = 0; i < n - 1; i++) {
             nodes[i] = new Node(i + 1, firstPort, f);
@@ -46,7 +47,7 @@ public class Wallet implements WalletInterface {
             }
         }
         dealer.switchReciever();
-        client = new Client(n+1,++firstPort,f);
+        client = new Client(n+1,++firstPort,mFaults);
         client.setNodes(nodes);
         client.startProcess(key);
         return null;

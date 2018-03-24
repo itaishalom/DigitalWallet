@@ -9,7 +9,7 @@ import static wallet.node.Message.OK;
  * Created by Itai on 24/03/2018.
  */
 public class Client extends Dealer {
-    public Client(int num, int port, int f ) {
+    public Client(int num, int port, int f) {
         super(num, port, f);
     }
 
@@ -21,20 +21,27 @@ public class Client extends Dealer {
     }
 
 
-
     public void startProcess(int key) {
-
+        container = new BroadcastReceiverClient();
+        broadcastReceiver = new Thread(container);
+        broadcastReceiver.start();
         System.out.println("#############  Begin retrieve key #############");
+
+      /*  Message msg = new Message(mNumber,2,BROADCAST,OK,"shit");
+        broadcast(msg,broadCasterSocket);*/
+
         q[0] = createArrayOfCoefs();
-        q[0][0] = key; // decide what to do
+        q[0][0] = mRandom.nextInt(boundForRandom);
+        ; // decide what to do
         p[0] = createArrayOfCoefs();
         p[0][0] = mRandom.nextInt(boundForRandom);
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
-            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), CLIENT_1);
+            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, CLIENT_1);
         }
-       // waitForProcessEnd wait = new waitForProcessEnd(value);
-     //   wait.start();
+        waitForProcessEnd wait = new waitForProcessEnd(key, CLIENT_2, CLIENT_1, "Sending key' bi-polynomial");
+        wait.start();
     }
+
 
     public class BroadcastReceiverClient extends BroadcastReceiver {
 
@@ -48,7 +55,9 @@ public class Client extends Dealer {
             while (running) {
                 Message msg = getMessageFromBroadcast();
                 switch (msg.getmSubType()) {
+
                     case PROTOCOL_COMPLETE:
+                        ProtocolDone[msg.getProcessType()] = true;
                    /*     if (!ProtocolDone[msg.getProcessType()]) {
                             ProtocolDone[msg.getProcessType()] = true;
                             printResults(msg.getProcessType(), Integer.valueOf(msg.getmInfo()));*/
