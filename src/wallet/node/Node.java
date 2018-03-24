@@ -41,6 +41,8 @@ public class Node {
     NetworkCommunication communication;
     protected int mNumberOfValues;
     protected boolean[] ProtocolDone;
+    private int[] g_values;
+    private int numOfGValues;
 
 
     public Node(int num, int port, int faultsNumber) {
@@ -65,6 +67,8 @@ public class Node {
         mFaults = faultsNumber;
         mNumberOfValues = (mFaults * 3) + 1;
         communication = new NetworkCommunication();
+        g_values = new int[mNumberOfValues];
+        numOfGValues=0;
     }
 
     public int getPort() {
@@ -77,10 +81,13 @@ public class Node {
     }
 
     public void calculateG() {
-        double key = (int) Functions.predict(values1[KEY], mFaults, 0);
-        double key2 =(int) Functions.predict(values1[KEY_TAG], mFaults, 0);
-        double randPloy =(int) Functions.predict(values1[RANDOM_VALUES], mFaults, 0);
-        String info = String.valueOf(randPloy*(key-key2));
+        int key = (int) Math.round(Functions.predict(values1[KEY], mFaults, 0));
+        int key2 =(int) Math.round(Functions.predict(values1[KEY_TAG], mFaults, 0));
+        int randPloy =(int) Math.round(Functions.predict(values1[RANDOM_VALUES], mFaults, 0));
+        int g_value = randPloy*(key-key2);
+        g_values[mNumber-1] = g_value;
+        numOfGValues++;
+        String info = String.valueOf(g_value);
         Message msg = new Message(mNumber,KEY_TAG,BROADCAST,G_VALUES,info);
         broadcast(msg,broadCasterSocket);
     }
@@ -228,6 +235,10 @@ public class Node {
                             }
                         }
                         break;
+                    }
+                    case G_VALUES: {
+                        g_values[msg.getmFrom()-1] = Integer.valueOf(msg.getmInfo());
+                        numOfGValues++;
                     }
                 }
             }
