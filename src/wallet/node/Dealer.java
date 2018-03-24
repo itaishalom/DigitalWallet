@@ -10,7 +10,6 @@ import static wallet.node.Message.*;
  * Created by Itai on 26/02/2018.
  */
 public class Dealer extends Node {
-    private int mFaults;
     Random mRandom;
     int boundForRandom;
     int[][] q;

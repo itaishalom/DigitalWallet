@@ -51,6 +51,6 @@ public class Wallet implements WalletInterface {
         client = new Client(n + 1, ++firstPort, mFaults);
         client.setNodes(nodes);
         client.startProcess(key);
-        return null;
+        return client.getValue();
     }
 }

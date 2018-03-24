@@ -36,7 +36,7 @@ public class Node {
     private int[] mCompareNumbers;
     private ConfirmValues[] confirmValuesThread;
     private boolean[] mIOk;
-    private int mFaults;
+    protected int mFaults;
     private WaitForOk[] waitForOks;
     private boolean[] haveIFinished;
     NetworkCommunication communication;

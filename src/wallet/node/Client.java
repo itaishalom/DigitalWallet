@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.Socket;
 
 import static wallet.node.Functions.broadcast;
+import static wallet.node.Functions.interpolateRobust;
 import static wallet.node.Message.*;
 import static wallet.node.Message.COMPLAINT_ANSWER;
 import static wallet.node.Message.OK;
@@ -13,8 +14,10 @@ import static wallet.node.Message.OK;
  * Created by Itai on 24/03/2018.
  */
 public class Client extends Dealer {
-    String[] QvValues;
-
+    private String[] QvValues;
+    private int qValuesCounter = 0;
+    public int reconstuctValue;
+    public boolean processDone = false;
     public Client(int num, int port, int f) {
         super(num, port, f, port);
         QvValues = new String[(3 * f) + 1];
@@ -49,6 +52,23 @@ public class Client extends Dealer {
         wait.start();
     }
 
+    public int getValue(){
+        int attempts = 0;
+        int totalAttepmpts = 5;
+        while(!processDone){
+            try {
+                attempts++;
+                if(attempts== totalAttepmpts)
+                    return 0;
+                Thread.sleep(20000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return reconstuctValue;
+    }
+
+
     @Override
     protected void startSession(Socket socket) {
         Thread a = new CleintIncomeDataHandler(socket);//, listening, allSocks);    //The session class gets the connected socket to handle
@@ -75,10 +95,15 @@ public class Client extends Dealer {
                 System.out.flush();
                 msg = new Message(output);
                 System.out.println(msg);
-                if (msg.getmSubType().equals(Qv_VALUE)){
-                    QvValues[msg.getmFrom()-1] = msg.getmInfo();
+                if (msg.getmSubType().equals(Qv_VALUE)) {
+                    QvValues[msg.getmFrom() - 1] = msg.getmInfo();
+                    qValuesCounter++;
+                    if (qValuesCounter == mNumberOfValues - mFaults) {
+                        reconstuctValue = (int) interpolateRobust(QvValues,2*mFaults,0);
+                        processDone = true;
+                    }
                 }
-                    mSocket.close();
+                mSocket.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
