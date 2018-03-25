@@ -75,23 +75,19 @@ public class Functions {
     }
 
     static long interpolateRobust(String[] vals, int f, int value) {
-        double[] y = new double[vals.length];
+        ArrayList<Double> yVals = new ArrayList<>();
+        ArrayList<Double> xVals = new ArrayList<>();
         for (int i = 0; i < vals.length; i++) {
             try {
-                y[i] = Double.parseDouble(vals[i]);
+                if(vals[i] != null) {
+                    yVals.add(Double.parseDouble(vals[i]));
+                    xVals.add((double) (i+1));
+                }
             }catch (NullPointerException e){
                 System.out.println("bad value = " + vals[i]);
-                y[i] = 0.0;
             }
         }
-/*        if (mNumber == 1 && confirmValuesThread == null)         // Fuck node 1
-            y[1] += 2.0;*/
-        //        y[y.length-1] = y[y.length-1] *3;
-        double[] x = new double[vals.length];
-        for (int i = 0; i < x.length; i++) {
-            x[i] = i + 1;
-        }
-        return combine(x, y, f + 1, value);
+        return combine(xVals, yVals, f + 1, value);
     }
 
 
@@ -125,24 +121,24 @@ public class Functions {
         return vals;
     }
 
-    private static long combine(double[] arrX, double[] arrY, int r, int value) {
+    private static long combine(ArrayList<Double> arrX, ArrayList<Double> arrY, int r, int value) {
         double[] resX = new double[r];
         double[] resY = new double[r];
         return doCombine(arrX, resX, arrY, resY, 0, 0, r, value);
     }
 
-    private static long doCombine(double[] arrX, double[] resX, double[] arrY, double[] resY, int currIndex, int level, int r, int value) {
+    private static long doCombine(ArrayList<Double> arrX, double[] resX, ArrayList<Double> arrY, double[] resY, int currIndex, int level, int r, int value) {
         if (level == r) {
             return printArray(resX, resY, r, value);
         }
-        for (int i = currIndex; i < arrX.length; i++) {
-            resX[level] = arrX[i];
-            resY[level] = arrY[i];
+        for (int i = currIndex; i < arrX.size(); i++) {
+            resX[level] = arrX.get(i);
+            resY[level] = arrY.get(i);
             long val = doCombine(arrX, resX, arrY, resY, i + 1, level + 1, r, value);
             if (val != -1)
                 return val;
             //way to avoid printing duplicates
-            if (i < arrX.length - 1 && arrX[i] == arrX[i + 1]) {
+            if (i < arrX.size() - 1 && arrX.get(i) == arrX.get(i + 1)) {
                 i++;
             }
         }

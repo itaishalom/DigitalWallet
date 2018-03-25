@@ -18,21 +18,26 @@ public class Client extends Dealer {
     private int qValuesCounter = 0;
     public int reconstuctValue;
     public boolean processDone = false;
+
     public Client(int num, int port, int f) {
         super(num, port, f, port);
         QvValues = new String[(3 * f) + 1];
     }
 
+/*
     @Override
     protected void startBroadcastReceiver() {
-  /*      container = new BroadcastReceiverClient();
+  */
+/*      container = new BroadcastReceiverClient();
         broadcastReceiver = new Thread(container);
-        broadcastReceiver.start();*/
+        broadcastReceiver.start();*//*
+
     }
+*/
 
 
     public void startProcess(int key) {
-        container = new BroadcastReceiverClient();
+        //     container = new BroadcastReceiverClient();
         broadcastReceiver = new Thread(container);
         broadcastReceiver.start();
         System.out.println("#############  Begin retrieve key #############");
@@ -52,15 +57,17 @@ public class Client extends Dealer {
         wait.start();
     }
 
-    public int getValue(){
+    public int getValue() {
         int attempts = 0;
         int totalAttepmpts = 5;
-        while(!processDone){
+        while (!processDone) {
             try {
                 attempts++;
-                if(attempts== totalAttepmpts)
+                if (attempts == totalAttepmpts) {
+                    System.out.println("key is incorrect, returning 0");
                     return 0;
-                Thread.sleep(20000);
+                }
+                Thread.sleep(10000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -85,7 +92,7 @@ public class Client extends Dealer {
         @Override
         public void run() {
             try {
-                if(processDone) {
+                if (processDone) {
                     return;
                 }
                 InputStream is = mSocket.getInputStream();
@@ -94,15 +101,15 @@ public class Client extends Dealer {
                 Message msg = null;
                 read = is.read(buffer);
                 String output = new String(buffer, 0, read);
-                print("To: " + mNumber + " from " + output);
+                // print("To: " + mNumber + " from " + output);
                 System.out.flush();
                 msg = new Message(output);
-                System.out.println(msg);
+                System.out.println("Client got: " + msg);
                 if (msg.getmSubType().equals(Qv_VALUE)) {
                     QvValues[msg.getmFrom() - 1] = msg.getmInfo();
                     qValuesCounter++;
                     if (qValuesCounter == mNumberOfValues - mFaults) {
-                        reconstuctValue = (int) interpolateRobust(QvValues,2*mFaults,0);
+                        reconstuctValue = (int) interpolateRobust(QvValues, 2 * mFaults, 0);
                         processDone = true;
                     }
                 }
@@ -113,7 +120,7 @@ public class Client extends Dealer {
         }
     }
 
-    public class BroadcastReceiverClient extends BroadcastReceiver {
+   /* public class BroadcastReceiverClient extends BroadcastReceiver {
 
         BroadcastReceiverClient() {
             super();
@@ -128,9 +135,9 @@ public class Client extends Dealer {
 
                     case PROTOCOL_COMPLETE:
                         ProtocolDone[msg.getProcessType()] = true;
-                   /*     if (!ProtocolDone[msg.getProcessType()]) {
+                   *//*     if (!ProtocolDone[msg.getProcessType()]) {
                             ProtocolDone[msg.getProcessType()] = true;
-                            printResults(msg.getProcessType(), Integer.valueOf(msg.getmInfo()));*/
+                            printResults(msg.getProcessType(), Integer.valueOf(msg.getmInfo()));*//*
                         System.out.println("protocol done");
 
                         break;
@@ -164,6 +171,6 @@ public class Client extends Dealer {
                 }
             }
         }
-    }
+    }*/
 
 }
