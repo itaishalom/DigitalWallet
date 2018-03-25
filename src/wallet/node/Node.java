@@ -311,7 +311,12 @@ public class Node {
                 }
             }
 
-            long result = interpolateRobust(g_values, 2 * mFaults, 0);
+            Double res =  interpolateRobust(g_values, 2 * mFaults, 0,mNumberOfValues-mFaults);
+            if(res == null){
+                System.out.println("Node " + mNumber + " failed to reconstruct G polynomial");
+                return;
+            }
+            int result = (int) Math.round(res);
             if (result != 0) {
                 System.out.println("G robust interpolation failed, result equlas " + result +" in node " + mNumber);
                 System.out.println(Arrays.asList(g_values));
@@ -348,7 +353,6 @@ public class Node {
                                 mComplaintResponseNumber[mProcessType] + " responses - protocol failed");
                         return; // Or send faile
                     }
-                    System.out.println(mNumber + " not enough complaint answers");
                     Thread.sleep(5000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -464,10 +468,12 @@ public class Node {
     }
 
     public void printResults(int processType, int round) {
-        String processName = getProcessFromNumber(processType);
-        System.out.println(mNumber + " Saved Values on round: " + round + " on process " + processName + " \n"
-                + "va1: " + Arrays.asList(values1[processType]) + "\n"
-                + "va2: " + Arrays.asList(values2[processType]));
+        if(values1[processType] !=null) {
+            String processName = getProcessFromNumber(processType);
+            System.out.println(mNumber + " Saved Values on round: " + round + " on process " + processName + " \n"
+                    + "va1: " + Arrays.asList(values1[processType]) + "\n"
+                    + "va2: " + Arrays.asList(values2[processType]));
+        }
     }
 
 
@@ -524,8 +530,9 @@ public class Node {
             valuesAreReady[info.getProcessType()] = false;
             String[] parts = info.getmInfo().split("\\|");
             String[] val1 = parts[0].split(",");
-          /*  if (mNumber == 1 && info.getProcessType() ==1)
-                val1[0] = "1123"; // fuck node 1*/
+       /*    if (mNumber == 1 && info.getProcessType() ==1)
+                val1[0] = "1123"; // fuck node 1
+       */
             String[] val2 = parts[1].split(",");
 
 

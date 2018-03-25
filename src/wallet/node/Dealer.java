@@ -66,7 +66,7 @@ public class Dealer extends Node {
         public void run() {
             while (!ProtocolDone[mEndProcess]) {
                 try {
-                    Thread.sleep(20000);
+                    Thread.sleep(10000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -129,7 +129,7 @@ public class Dealer extends Node {
                     case PROTOCOL_COMPLETE:
                         if (!ProtocolDone[msg.getProcessType()]) {
                             ProtocolDone[msg.getProcessType()] = true;
-                        //    printResults(msg.getProcessType(), Integer.valueOf(msg.getmInfo()));
+                            printResults(msg.getProcessType(), Integer.valueOf(msg.getmInfo()));
 
                         }
                         break;

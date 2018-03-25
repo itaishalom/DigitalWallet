@@ -18,6 +18,7 @@ public class Client extends Dealer {
     private int qValuesCounter = 0;
     public int reconstuctValue;
     public boolean processDone = false;
+    private CalculateQ_V calculateQ_v_thread;
 
     public Client(int num, int port, int f) {
         super(num, port, f, port);
@@ -108,9 +109,9 @@ public class Client extends Dealer {
                 if (msg.getmSubType().equals(Qv_VALUE)) {
                     QvValues[msg.getmFrom() - 1] = msg.getmInfo();
                     qValuesCounter++;
-                    if (qValuesCounter == mNumberOfValues - mFaults) {
-                        reconstuctValue = (int) interpolateRobust(QvValues, 2 * mFaults, 0);
-                        processDone = true;
+                    if (calculateQ_v_thread == null) {
+                        calculateQ_v_thread = new CalculateQ_V();
+                        calculateQ_v_thread.start();
                     }
                 }
                 mSocket.close();
@@ -120,57 +121,34 @@ public class Client extends Dealer {
         }
     }
 
-   /* public class BroadcastReceiverClient extends BroadcastReceiver {
-
-        BroadcastReceiverClient() {
-            super();
-        }
+    public class CalculateQ_V extends Thread {
+        int attempts = 0;
+        int totalAttepmpts = 5;
 
         @Override
         public void run() {
-            running = true;
-            while (running) {
-                Message msg = getMessageFromBroadcast();
-                switch (msg.getmSubType()) {
+            try {
+                Thread.sleep(3000);
 
-                    case PROTOCOL_COMPLETE:
-                        ProtocolDone[msg.getProcessType()] = true;
-                   *//*     if (!ProtocolDone[msg.getProcessType()]) {
-                            ProtocolDone[msg.getProcessType()] = true;
-                            printResults(msg.getProcessType(), Integer.valueOf(msg.getmInfo()));*//*
-                        System.out.println("protocol done");
-
-                        break;
-                    case COMPLAINT: {
-                        mComplaintNumber[msg.getProcessType()]++;
-                        String data = msg.getmInfo();
-                        String[] nodes = data.split("\\|");
-                        int i = Integer.parseInt(nodes[0]);
-                        int j = Integer.parseInt(nodes[1]);
-                        if (j == mNumber)
-                            mComplaintNumber[msg.getProcessType()]--;
-                        long result1 = computePolynomial(q[msg.getProcessType()], i) * computePolynomial(p[msg.getProcessType()], j);
-                        long result2 = computePolynomial(p[msg.getProcessType()], i) * computePolynomial(q[msg.getProcessType()], j);
-                        Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
-                        broadcast(newMsg, broadCasterSocket);
-                        break;
-                    }
-                    case OK: {
-                        mOkNumber[msg.getProcessType()]++;
-                        okCounter[msg.getProcessType()][msg.getmFrom() - 1] = true;
-                        if (waitForOks[msg.getProcessType()] == null) {
-                            waitForOks[msg.getProcessType()] = new WaitForOkDealer(msg.getProcessType());
-                            waitForOks[msg.getProcessType()].start();
-                        }
-                        break;
-                    }
-                    case COMPLAINT_ANSWER: {
-                        mComplaintResponseNumber[msg.getProcessType()]++;
-                        break;
+                while (qValuesCounter < mNumberOfValues - mFaults) {
+                    Thread.sleep(3000);
+                    attempts++;
+                    if (attempts == totalAttepmpts) {
+                        System.out.println("Can restore, not enough Q_V values");
+                        processDone = true;
+                        return;
                     }
                 }
-            }
-        }
-    }*/
 
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Double val = interpolateRobust(QvValues, mFaults, 0, mNumberOfValues - mFaults);
+            if (val != null)
+                reconstuctValue = (int) Math.round(val);
+            processDone = true;
+        }
+    }
 }
+
+
