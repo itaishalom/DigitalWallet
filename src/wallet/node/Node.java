@@ -45,7 +45,7 @@ public class Node {
     private String[] g_values;
     private int numOfGValues;
     private int mClientPort;
-
+    Thread waitForGsTread;
 
     public Node(int num, int port, int faultsNumber, int clientPort) {
         mClientPort = clientPort;
@@ -157,7 +157,8 @@ public class Node {
                             ProtocolDone[msg.getProcessType()] = true;
                             Message notifyEnd = new Message(mNumber, msg.getProcessType(), BROADCAST, PROTOCOL_COMPLETE, "1");
                             broadcast(notifyEnd, broadCasterSocket);
-                            calculateG();
+                            if (msg.getProcessType() == KEY_TAG)
+                                calculateG();
                         }
 
                         break;
@@ -241,8 +242,8 @@ public class Node {
                     case G_VALUES: {
                         g_values[msg.getmFrom() - 1] = msg.getmInfo();
                         numOfGValues++;
-                        if (numOfGValues == 1) { //starts a new thread
-                            Thread waitForGsTread = new WaitForGsToCalculateInZero();
+                        if (waitForGsTread == null) { //starts a new thread
+                            waitForGsTread = new WaitForGsToCalculateInZero();
                             waitForGsTread.start();
                         }
                     }
@@ -261,8 +262,8 @@ public class Node {
                 Socket socket;
                 ServerSocket serverSocket;
                 serverSocket = new ServerSocket(mPortInput);
+                System.out.println("Open listener at port : " + mPortInput +" node: " + mNumber);
                 serverSocket.setSoTimeout(DefaultTimeout);
-                Thread a;
                 while (true) {
                     try {
                         socket = serverSocket.accept();
@@ -309,9 +310,11 @@ public class Node {
                     e.printStackTrace();
                 }
             }
+
             long result = interpolateRobust(g_values, 2 * mFaults, 0);
             if (result != 0) {
-                System.out.println("G robust interpolation failed, result equlas " + result);
+                System.out.println("G robust interpolation failed, result equlas " + result +" in node " + mNumber);
+                System.out.println(Arrays.asList(g_values));
             } else {
                 long value = Math.round(Functions.predict(values1[VALUE], mFaults, 0));
                 Message msg = new Message(mNumber, KEY_TAG, PRIVATE, Qv_VALUE, String.valueOf(value));
@@ -451,7 +454,8 @@ public class Node {
                 ProtocolDone[okProcNumber] = true;
                 Message notifyEnd = new Message(mNumber, okProcNumber, BROADCAST, PROTOCOL_COMPLETE, String.valueOf(okRound));
                 broadcast(notifyEnd, broadCasterSocket);
-                calculateG();
+                if (okProcNumber == KEY_TAG)
+                    calculateG();
                 // System.out.println(Arrays.toString(values1[mProcessType]));
                 //   System.out.println(Arrays.toString(values2[mProcessType]));
             }

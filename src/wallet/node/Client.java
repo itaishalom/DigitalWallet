@@ -85,6 +85,9 @@ public class Client extends Dealer {
         @Override
         public void run() {
             try {
+                if(processDone) {
+                    return;
+                }
                 InputStream is = mSocket.getInputStream();
                 byte[] buffer = new byte[1024];
                 int read;

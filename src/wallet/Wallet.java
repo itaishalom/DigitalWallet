@@ -17,9 +17,10 @@ public class Wallet implements WalletInterface {
     private int mFaults;
 
     public Wallet(int f) {
-        int clientPort = firstPort + n + 1;
+
         mFaults = f;
         n = 3 * f + 1;
+        int clientPort = firstPort + n ;
         nodes = new Node[n];
         for (int i = 0; i < n - 1; i++) {
             nodes[i] = new Node(i + 1, firstPort, f,clientPort);

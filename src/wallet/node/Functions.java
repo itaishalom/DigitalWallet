@@ -77,7 +77,12 @@ public class Functions {
     static long interpolateRobust(String[] vals, int f, int value) {
         double[] y = new double[vals.length];
         for (int i = 0; i < vals.length; i++) {
-            y[i] = Double.parseDouble(vals[i]);
+            try {
+                y[i] = Double.parseDouble(vals[i]);
+            }catch (NullPointerException e){
+                System.out.println("bad value = " + vals[i]);
+                y[i] = 0.0;
+            }
         }
 /*        if (mNumber == 1 && confirmValuesThread == null)         // Fuck node 1
             y[1] += 2.0;*/
@@ -133,8 +138,8 @@ public class Functions {
         for (int i = currIndex; i < arrX.length; i++) {
             resX[level] = arrX[i];
             resY[level] = arrY[i];
-            long val = doCombine(arrX, resX, arrY, resY, i + 1, level + 1, r,value);
-            if(val != -1)
+            long val = doCombine(arrX, resX, arrY, resY, i + 1, level + 1, r, value);
+            if (val != -1)
                 return val;
             //way to avoid printing duplicates
             if (i < arrX.length - 1 && arrX[i] == arrX[i + 1]) {
