@@ -1,18 +1,11 @@
 package wallet.node;//###############
-// FILE : Server.java
-// WRITER : Itai Shalom, itaishalom, 301371696 
-// EXERCISE : oop ex3 2011
-// DESCRIPTION: The MyServer object.
-//###############
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
 import java.util.Arrays;
 
-import static wallet.node.Functions.broadcast;
-import static wallet.node.Functions.interpolate;
-import static wallet.node.Functions.interpolateRobust;
+import static wallet.node.Functions.*;
 import static wallet.node.Message.*;
 
 /**
@@ -25,27 +18,27 @@ public class Node {
     private int mPortInput;
     int mNumber;
     static DatagramSocket broadCasterSocket = null;
-    protected Node[] mAllNodes;
-    protected int[] mOkNumber;
-    protected int[] mOk2Number;
-    protected int[] mComplaintNumber;
-    protected int[] mComplaintResponseNumber;
+    Node[] mAllNodes;
+    int[] mOkNumber;
+    private int[] mOk2Number;
+    int[] mComplaintNumber;
+    int[] mComplaintResponseNumber;
     private String[][] values1;
     private String[][] values2;
     private boolean[] valuesAreReady;
     private int[] mCompareNumbers;
     private ConfirmValues[] confirmValuesThread;
     private boolean[] mIOk;
-    protected int mFaults;
+    int mFaults;
     private WaitForOk[] waitForOks;
     private boolean[] haveIFinished;
     NetworkCommunication communication;
-    protected int mNumberOfValues;
-    protected boolean[] ProtocolDone;
+    int mNumberOfValues;
+    boolean[] ProtocolDone;
     private String[] g_values;
     private int numOfGValues;
     private int mClientPort;
-    Thread waitForGsTread;
+    private Thread waitForGsTread;
 
     public Node(int num, int port, int faultsNumber, int clientPort) {
         mClientPort = clientPort;
@@ -72,6 +65,27 @@ public class Node {
         communication = new NetworkCommunication();
         g_values = new String[mNumberOfValues];
         numOfGValues = 0;
+    }
+
+
+    protected void refresh(int process) {
+        haveIFinished[process] = false;
+        valuesAreReady[process] = false;
+        ProtocolDone[process] = false;
+        values1[process] = null;
+        values2[process] = null;
+        confirmValuesThread[process] = null;
+        waitForOks[process] = null;
+        mComplaintNumber[process] = 0;
+        mOkNumber[process] = 0;
+        mOk2Number[process] = 0;
+        mComplaintResponseNumber[process] = 0;
+        mIOk[process] = false;
+        mCompareNumbers[process] = 0;
+        if (process == KEY_TAG) {
+            g_values = new String[mNumberOfValues];
+            numOfGValues = 0;
+        }
     }
 
     public int getPort() {
@@ -142,7 +156,6 @@ public class Node {
                 Message msg = getMessageFromBroadcast();
                 if (msg.getmFrom() == mNumber)
                     continue;
-                print("I am " + mNumber + " and I got " + msg.toString());
                 switch (msg.getmSubType()) {
                     case COMPLAINT: {
                         mComplaintNumber[msg.getProcessType()]++;
@@ -163,6 +176,9 @@ public class Node {
 
                         break;
                     }
+                    case REFRESH:
+                    //    refresh(msg.getProcessType());
+                        break;
                     case OK2: {
                         mOk2Number[msg.getProcessType()]++;
                         break;
@@ -262,7 +278,7 @@ public class Node {
                 Socket socket;
                 ServerSocket serverSocket;
                 serverSocket = new ServerSocket(mPortInput);
-                System.out.println("Open listener at port : " + mPortInput +" node: " + mNumber);
+                System.out.println("Open listener at port : " + mPortInput + " node: " + mNumber);
                 serverSocket.setSoTimeout(DefaultTimeout);
                 while (true) {
                     try {
@@ -311,14 +327,14 @@ public class Node {
                 }
             }
 
-            Double res =  interpolateRobust(g_values, 2 * mFaults, 0,mNumberOfValues-mFaults);
-            if(res == null){
+            Double res = interpolateRobust(g_values, 2 * mFaults, 0, mNumberOfValues - mFaults);
+            if (res == null) {
                 System.out.println("Node " + mNumber + " failed to reconstruct G polynomial");
                 return;
             }
             int result = (int) Math.round(res);
             if (result != 0) {
-                System.out.println("G robust interpolation failed, result equlas " + result +" in node " + mNumber);
+                System.out.println("G robust interpolation failed, result equlas " + result + " in node " + mNumber);
                 System.out.println(Arrays.asList(g_values));
             } else {
                 long value = Math.round(Functions.predict(values1[VALUE], mFaults, 0));
@@ -396,7 +412,7 @@ public class Node {
 
     public class WaitForOk extends Thread {
         int attemptNumbers = 0;
-        int TOTAL_ATTEMPTS = 5;
+        int TOTAL_ATTEMPTS = 6;
         int okProcNumber;
         int okRound;
 
@@ -422,6 +438,8 @@ public class Node {
             else
                 checkOkArray = mOk2Number;
             while (checkOkArray[okProcNumber] + 1 < mNumberOfValues - mFaults - 1) {
+                if(ProtocolDone[okProcNumber])
+                    return;
                 try {
                     attemptNumbers++;
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
@@ -468,13 +486,15 @@ public class Node {
     }
 
     public void printResults(int processType, int round) {
-        if(values1[processType] !=null) {
+        if (values1[processType] != null) {
             String processName = getProcessFromNumber(processType);
             System.out.println(mNumber + " Saved Values on round: " + round + " on process " + processName + " \n"
                     + "va1: " + Arrays.asList(values1[processType]) + "\n"
                     + "va2: " + Arrays.asList(values2[processType]));
         }
     }
+
+
 
 
     public class NodeIncomeDataHandler extends Thread {
@@ -500,6 +520,10 @@ public class Node {
                 mSocket.close();
 
                 if (msg.isPrivate()) {
+                    if (msg.isValues()) {
+                        handleInitialValues(msg);
+                        confirmValuesThread[msg.getProcessType()] = null;
+                    }
                     if (msg.isValues()) {
                         handleInitialValues(msg);
                         confirmValuesThread[msg.getProcessType()] = null;

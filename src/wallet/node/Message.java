@@ -15,6 +15,8 @@ public class Message {
     public static final String Qv_VALUE = "q_v_value";
     public static final String COMPLAINT = "complaint";
     public static final String COMPLAINT_ANSWER = "complaint_answer";
+    public static final String REFRESH = "refresh";
+
     public static final String NO_OK_ANSWER = "no_ok_answer";
     public static final String PROTOCOL_COMPLETE = "protocol_complete";
     public static final String LOCAL_HOST = "localhost";

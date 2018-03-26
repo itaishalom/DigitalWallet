@@ -34,7 +34,19 @@ public class Dealer extends Node {
         return ProtocolDone[VALUE];
     }
 
+    protected void sendRefresh(int process){
+        Message msg = new Message(mNumber,process,BROADCAST, REFRESH,REFRESH);
+        broadcast(msg,broadCasterSocket);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+
     public void startProcess(int key, int value) {
+        sendRefresh(KEY);
         System.out.println("#############  Begin store key #############");
         q[KEY] = createArrayOfCoefs();
         q[KEY][0] = key; // decide what to do
@@ -66,16 +78,17 @@ public class Dealer extends Node {
         public void run() {
             while (!ProtocolDone[mEndProcess]) {
                 try {
-                    Thread.sleep(10000);
+                    Thread.sleep(5000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
                 attemptNumbers++;
                 if (attemptNumbers == TOTAL_ATTEMPTS) {
-                    System.out.println("Failed Storing key");
+                    System.out.println("Dealer failed");
                     return;
                 }
             }
+            sendRefresh(mProcess);
             System.out.println("############# " + mInfo + "  #############");
             q[VALUE] = createArrayOfCoefs();
             q[VALUE][0] = mValue; // decide what to do
@@ -165,6 +178,13 @@ public class Dealer extends Node {
         }
     }
 
+    protected int[] getQValue(int processNumber){
+        return q[processNumber];
+    }
+    protected int[] getPValue(int processNumber){
+        return p[processNumber];
+    }
+
     public class WaitForOkDealer extends WaitForOk {
 
         public WaitForOkDealer(int processType) {
@@ -191,10 +211,15 @@ public class Dealer extends Node {
                 boolean isProtocolDone = true;
                 for (int i = 0; i < okCounter[okProcNumber].length; i++) {
                     if (!okCounter[okProcNumber][i]) {
-                        String answer = buildInitialValues(i + 1, q[okProcNumber], p[okProcNumber]);
+                        try {
+                            String answer = buildInitialValues(i + 1, getQValue(okProcNumber), getPValue(okProcNumber));
+
                         Message msg = new Message(mNumber, okProcNumber, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
                         broadcast(msg, broadCasterSocket);
                         isProtocolDone = false;
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
                     }
                 }
 

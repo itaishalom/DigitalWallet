@@ -15,6 +15,8 @@ public class Wallet implements WalletInterface {
     private int n;
     private int firstPort = 8090;
     private int mFaults;
+    private boolean isDealerRegularNode = false;
+
 
     public Wallet(int f) {
 
@@ -48,9 +50,14 @@ public class Wallet implements WalletInterface {
                 e.printStackTrace();
             }
         }
-        dealer.switchReciever();
-        client = new Client(n + 1, ++firstPort, mFaults);
-        client.setNodes(nodes);
+        if(!isDealerRegularNode) {
+            dealer.switchReciever();
+            isDealerRegularNode = true;
+        }
+        if(client == null) {
+            client = new Client(n + 1, ++firstPort, mFaults);
+            client.setNodes(nodes);
+        }
         client.startProcess(key);
         return client.getValue();
     }

@@ -4,11 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 
-import static wallet.node.Functions.broadcast;
 import static wallet.node.Functions.interpolateRobust;
 import static wallet.node.Message.*;
-import static wallet.node.Message.COMPLAINT_ANSWER;
-import static wallet.node.Message.OK;
 
 /**
  * Created by Itai on 24/03/2018.
@@ -19,7 +16,7 @@ public class Client extends Dealer {
     public int reconstuctValue;
     public boolean processDone = false;
     private CalculateQ_V calculateQ_v_thread;
-
+    private boolean broadCastStarted = false;
     public Client(int num, int port, int f) {
         super(num, port, f, port);
         QvValues = new String[(3 * f) + 1];
@@ -39,13 +36,17 @@ public class Client extends Dealer {
 
     public void startProcess(int key) {
         //     container = new BroadcastReceiverClient();
-        broadcastReceiver = new Thread(container);
-        broadcastReceiver.start();
+        if(!broadCastStarted) {
+            broadCastStarted = true;
+            broadcastReceiver = new Thread(container);
+            broadcastReceiver.start();
+        }
         System.out.println("#############  Begin retrieve key #############");
-
+        ProtocolDone[RANDOM_VALUES] = false;
+        ProtocolDone[VALUE] = false;
       /*  Message msg = new Message(mNumber,2,BROADCAST,OK,"shit");
         broadcast(msg,broadCasterSocket);*/
-
+        sendRefresh(RANDOM_VALUES);
         q[0] = createArrayOfCoefs();
         q[0][0] = mRandom.nextInt(boundForRandom);
         ; // decide what to do
@@ -68,7 +69,7 @@ public class Client extends Dealer {
                     System.out.println("key is incorrect, returning 0");
                     return 0;
                 }
-                Thread.sleep(10000);
+                Thread.sleep(5000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -119,6 +120,16 @@ public class Client extends Dealer {
                 e.printStackTrace();
             }
         }
+    }
+
+    @Override
+    protected int[] getQValue(int processNumber){
+        return q[processNumber-RANDOM_VALUES];
+    }
+
+    @Override
+    protected int[] getPValue(int processNumber){
+        return p[processNumber-RANDOM_VALUES];
     }
 
     public class CalculateQ_V extends Thread {

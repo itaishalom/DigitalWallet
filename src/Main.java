@@ -9,6 +9,7 @@ public class Main {
         Wallet myWallet = new Wallet(1);
         myWallet.store(1,32);
         System.out.println("######### Reconstruct value: " + myWallet.retrieve(1) +" ##############");
+  //      System.out.println("######### Reconstruct value: " + myWallet.retrieve(1) +" ##############");
     }
 
 
