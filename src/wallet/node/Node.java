@@ -177,7 +177,7 @@ public class Node {
                         break;
                     }
                     case REFRESH:
-                    //    refresh(msg.getProcessType());
+                        //    refresh(msg.getProcessType());
                         break;
                     case OK2: {
                         mOk2Number[msg.getProcessType()]++;
@@ -350,7 +350,7 @@ public class Node {
         int mProcessType = -1;
 
 
-        public ConfirmValues(int processType) {
+        ConfirmValues(int processType) {
             mProcessType = processType;
         }
 
@@ -397,7 +397,6 @@ public class Node {
                 mIOk[msg.getProcessType()] = true;
                 broadcast(msg, broadCasterSocket);
 
-
                 waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 1);
                 waitForOks[msg.getProcessType()].start();
             }
@@ -438,7 +437,7 @@ public class Node {
             else
                 checkOkArray = mOk2Number;
             while (checkOkArray[okProcNumber] + 1 < mNumberOfValues - mFaults - 1) {
-                if(ProtocolDone[okProcNumber])
+                if (ProtocolDone[okProcNumber])
                     return;
                 try {
                     attemptNumbers++;
@@ -495,8 +494,6 @@ public class Node {
     }
 
 
-
-
     public class NodeIncomeDataHandler extends Thread {
         Socket mSocket;
 
@@ -516,29 +513,20 @@ public class Node {
                 print("To: " + mNumber + " from " + output);
                 System.out.flush();
                 msg = new Message(output);
-
                 mSocket.close();
-
                 if (msg.isPrivate()) {
                     if (msg.isValues()) {
                         handleInitialValues(msg);
-                        confirmValuesThread[msg.getProcessType()] = null;
-                    }
-                    if (msg.isValues()) {
-                        handleInitialValues(msg);
-                        confirmValuesThread[msg.getProcessType()] = null;
                     }
                     if (msg.isCompare()) {
                         mCompareNumbers[msg.getProcessType()]++;
                         handleCompares(msg);
-                        int waitForCompares = (mNumberOfValues) - 1;
-                        if (waitForCompares == mCompareNumbers[msg.getProcessType()]) {
-                            if (confirmValuesThread[msg.getProcessType()] == null) {
-                                confirmValuesThread[msg.getProcessType()] = new ConfirmValues(msg.getProcessType());
-                                confirmValuesThread[msg.getProcessType()].start();
-                            }
+                        if (confirmValuesThread[msg.getProcessType()] == null) {
+                            confirmValuesThread[msg.getProcessType()] = new ConfirmValues(msg.getProcessType());
+                            confirmValuesThread[msg.getProcessType()].start();
                         }
                     }
+
                 }
             } catch (IOException e) {
                 e.printStackTrace();

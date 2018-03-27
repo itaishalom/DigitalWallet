@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 
+import static wallet.node.Client.ProccesStatus.FAILED;
 import static wallet.node.Functions.interpolateRobust;
 import static wallet.node.Message.*;
 
@@ -11,12 +12,21 @@ import static wallet.node.Message.*;
  * Created by Itai on 24/03/2018.
  */
 public class Client extends Dealer {
+    private boolean waitForQValuesStarted = false;
     private String[] QvValues;
     private int qValuesCounter = 0;
     public int reconstuctValue;
-    public boolean processDone = false;
+    public ProccesStatus processStatus;
     private CalculateQ_V calculateQ_v_thread;
     private boolean broadCastStarted = false;
+    private boolean qValueArrived = false;
+
+    public enum ProccesStatus {
+        DONE,
+        ACTIVE,
+        FAILED,
+    }
+
     public Client(int num, int port, int f) {
         super(num, port, f, port);
         QvValues = new String[(3 * f) + 1];
@@ -35,8 +45,9 @@ public class Client extends Dealer {
 
 
     public void startProcess(int key) {
+        processStatus = ProccesStatus.ACTIVE;
         //     container = new BroadcastReceiverClient();
-        if(!broadCastStarted) {
+        if (!broadCastStarted) {
             broadCastStarted = true;
             broadcastReceiver = new Thread(container);
             broadcastReceiver.start();
@@ -60,19 +71,15 @@ public class Client extends Dealer {
     }
 
     public int getValue() {
-        int attempts = 0;
-        int totalAttepmpts = 5;
-        while (!processDone) {
+        while (processStatus == ProccesStatus.ACTIVE) {
             try {
-                attempts++;
-                if (attempts == totalAttepmpts) {
-                    System.out.println("key is incorrect, returning 0");
-                    return 0;
-                }
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }if(processStatus == FAILED){
+            System.out.println("Invalid key");
+            return -1;
         }
         return reconstuctValue;
     }
@@ -93,43 +100,62 @@ public class Client extends Dealer {
 
         @Override
         public void run() {
-            try {
-                if (processDone) {
-                    return;
-                }
-                InputStream is = mSocket.getInputStream();
-                byte[] buffer = new byte[1024];
-                int read;
-                Message msg = null;
-                read = is.read(buffer);
-                String output = new String(buffer, 0, read);
-                // print("To: " + mNumber + " from " + output);
-                System.out.flush();
-                msg = new Message(output);
-                System.out.println("Client got: " + msg);
-                if (msg.getmSubType().equals(Qv_VALUE)) {
-                    QvValues[msg.getmFrom() - 1] = msg.getmInfo();
-                    qValuesCounter++;
-                    if (calculateQ_v_thread == null) {
-                        calculateQ_v_thread = new CalculateQ_V();
-                        calculateQ_v_thread.start();
+
+                if (processStatus == ProccesStatus.ACTIVE) {
+                    try {
+                    InputStream is = mSocket.getInputStream();
+                    byte[] buffer = new byte[1024];
+                    int read;
+                    Message msg = null;
+                    read = is.read(buffer);
+                    String output = new String(buffer, 0, read);
+                    // print("To: " + mNumber + " from " + output);
+                    System.out.flush();
+                    msg = new Message(output);
+                    System.out.println("Client got: " + msg);
+                    if (msg.getmSubType().equals(Qv_VALUE)) {
+                        qValueArrived= true;
+                        QvValues[msg.getmFrom() - 1] = msg.getmInfo();
+                        qValuesCounter++;
+                        if (calculateQ_v_thread == null) {
+                            calculateQ_v_thread = new CalculateQ_V();
+                            calculateQ_v_thread.start();
+                        }
                     }
+                    mSocket.close();
+                } catch(IOException e){
+                    e.printStackTrace();
                 }
-                mSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }
 
     @Override
-    protected int[] getQValue(int processNumber){
-        return q[processNumber-RANDOM_VALUES];
+    protected void waitForGValues(){
+        if(!waitForQValuesStarted) {
+            waitForQValuesStarted= true;
+            try {
+                Thread.sleep(3000);
+                if (!qValueArrived) {
+                    processStatus = FAILED;
+                    System.out.println("No q value arrived - terminating the process");
+                    return;
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     @Override
-    protected int[] getPValue(int processNumber){
-        return p[processNumber-RANDOM_VALUES];
+    protected int[] getQValue(int processNumber) {
+        return q[processNumber - RANDOM_VALUES];
+    }
+
+    @Override
+    protected int[] getPValue(int processNumber) {
+        return p[processNumber - RANDOM_VALUES];
     }
 
     public class CalculateQ_V extends Thread {
@@ -146,7 +172,7 @@ public class Client extends Dealer {
                     attempts++;
                     if (attempts == totalAttepmpts) {
                         System.out.println("Can restore, not enough Q_V values");
-                        processDone = true;
+                        processStatus = FAILED;
                         return;
                     }
                 }
@@ -155,9 +181,13 @@ public class Client extends Dealer {
                 e.printStackTrace();
             }
             Double val = interpolateRobust(QvValues, mFaults, 0, mNumberOfValues - mFaults);
-            if (val != null)
+            if (val != null) {
                 reconstuctValue = (int) Math.round(val);
-            processDone = true;
+                processStatus = ProccesStatus.DONE;
+
+            } else {
+                processStatus = FAILED;
+            }
         }
     }
 }

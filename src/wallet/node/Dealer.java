@@ -173,9 +173,17 @@ public class Dealer extends Node {
                         mComplaintResponseNumber[msg.getProcessType()]++;
                         break;
                     }
+                    case G_VALUES: {
+                        waitForGValues();
+                        break;
+                    }
                 }
             }
         }
+    }
+
+    protected void waitForGValues(){
+
     }
 
     protected int[] getQValue(int processNumber){
