@@ -55,6 +55,20 @@ public class Client extends Dealer {
         System.out.println("#############  Begin retrieve key #############");
         ProtocolDone[RANDOM_VALUES] = false;
         ProtocolDone[VALUE] = false;
+
+        qValueArrived = false;
+        QvValues = new String[(3 * mFaults) + 1];
+        qValuesCounter = 0;
+        if (calculateQ_v_thread != null) {
+            try {
+                calculateQ_v_thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            calculateQ_v_thread = null;
+        }
+
+
       /*  Message msg = new Message(mNumber,2,BROADCAST,OK,"shit");
         broadcast(msg,broadCasterSocket);*/
         sendRefresh(RANDOM_VALUES);
@@ -77,7 +91,8 @@ public class Client extends Dealer {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }if(processStatus == FAILED){
+        }
+        if (processStatus == FAILED) {
             System.out.println("Invalid key");
             return -1;
         }
@@ -101,8 +116,8 @@ public class Client extends Dealer {
         @Override
         public void run() {
 
-                if (processStatus == ProccesStatus.ACTIVE) {
-                    try {
+            if (processStatus == ProccesStatus.ACTIVE) {
+                try {
                     InputStream is = mSocket.getInputStream();
                     byte[] buffer = new byte[1024];
                     int read;
@@ -114,7 +129,7 @@ public class Client extends Dealer {
                     msg = new Message(output);
                     System.out.println("Client got: " + msg);
                     if (msg.getmSubType().equals(Qv_VALUE)) {
-                        qValueArrived= true;
+                        qValueArrived = true;
                         QvValues[msg.getmFrom() - 1] = msg.getmInfo();
                         qValuesCounter++;
                         if (calculateQ_v_thread == null) {
@@ -123,7 +138,7 @@ public class Client extends Dealer {
                         }
                     }
                     mSocket.close();
-                } catch(IOException e){
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -131,9 +146,9 @@ public class Client extends Dealer {
     }
 
     @Override
-    protected void waitForGValues(){
-        if(!waitForQValuesStarted) {
-            waitForQValuesStarted= true;
+    protected void waitForGValues() {
+        if (!waitForQValuesStarted) {
+            waitForQValuesStarted = true;
             try {
                 Thread.sleep(3000);
                 if (!qValueArrived) {

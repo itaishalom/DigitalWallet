@@ -74,6 +74,23 @@ public class Node {
         ProtocolDone[process] = false;
         values1[process] = null;
         values2[process] = null;
+
+        numOfGValues = 0;
+
+        try {
+            if (confirmValuesThread[process] != null)
+                confirmValuesThread[process].join();
+            if (waitForOks[process] != null)
+                waitForOks[process].join();
+
+            if (waitForGsTread != null) {
+                waitForGsTread.join();
+                waitForGsTread = null;
+            }
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         confirmValuesThread[process] = null;
         waitForOks[process] = null;
         mComplaintNumber[process] = 0;
@@ -177,7 +194,7 @@ public class Node {
                         break;
                     }
                     case REFRESH:
-                        //    refresh(msg.getProcessType());
+                        refresh(msg.getProcessType());
                         break;
                     case OK2: {
                         mOk2Number[msg.getProcessType()]++;
