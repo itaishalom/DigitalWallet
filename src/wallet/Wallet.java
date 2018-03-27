@@ -42,7 +42,7 @@ public class Wallet implements WalletInterface {
     }
 
     @Override
-    public Object retrieve(int key) {
+    public int retrieve(int key) {
         while (!dealer.isStoreDone()) {
             try {
                 Thread.sleep(5000);

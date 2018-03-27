@@ -295,7 +295,7 @@ public class Node {
                 Socket socket;
                 ServerSocket serverSocket;
                 serverSocket = new ServerSocket(mPortInput);
-                System.out.println("Open listener at port : " + mPortInput + " node: " + mNumber);
+          //      System.out.println("Open listener at port : " + mPortInput + " node: " + mNumber);
                 serverSocket.setSoTimeout(DefaultTimeout);
                 while (true) {
                     try {
@@ -351,8 +351,8 @@ public class Node {
             }
             int result = (int) Math.round(res);
             if (result != 0) {
-                System.out.println("G robust interpolation failed, result equlas " + result + " in node " + mNumber);
-                System.out.println(Arrays.asList(g_values));
+                print(("G robust interpolation failed, result equlas " + result + " in node " + mNumber));
+               // System.out.println(Arrays.asList(g_values));
             } else {
                 long value = Math.round(Functions.predict(values1[VALUE], mFaults, 0));
                 Message msg = new Message(mNumber, KEY_TAG, PRIVATE, Qv_VALUE, String.valueOf(value));
@@ -423,7 +423,7 @@ public class Node {
 
     public void print(String s) {
         //    if (mNumber == 1)
-        System.out.println(s);
+   //     System.out.println(s);
     }
 
     public class WaitForOk extends Thread {
@@ -502,12 +502,12 @@ public class Node {
     }
 
     public void printResults(int processType, int round) {
-        if (values1[processType] != null) {
+       /* if (values1[processType] != null) {
             String processName = getProcessFromNumber(processType);
             System.out.println(mNumber + " Saved Values on round: " + round + " on process " + processName + " \n"
                     + "va1: " + Arrays.asList(values1[processType]) + "\n"
                     + "va2: " + Arrays.asList(values2[processType]));
-        }
+        }*/
     }
 
 

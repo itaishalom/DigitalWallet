@@ -55,7 +55,7 @@ public class Client extends Dealer {
         System.out.println("#############  Begin retrieve key #############");
         ProtocolDone[RANDOM_VALUES] = false;
         ProtocolDone[VALUE] = false;
-
+        waitForQValuesStarted = false;
         qValueArrived = false;
         QvValues = new String[(3 * mFaults) + 1];
         qValuesCounter = 0;
@@ -127,7 +127,7 @@ public class Client extends Dealer {
                     // print("To: " + mNumber + " from " + output);
                     System.out.flush();
                     msg = new Message(output);
-                    System.out.println("Client got: " + msg);
+                    print("Client got: " + msg);
                     if (msg.getmSubType().equals(Qv_VALUE)) {
                         qValueArrived = true;
                         QvValues[msg.getmFrom() - 1] = msg.getmInfo();
@@ -153,7 +153,7 @@ public class Client extends Dealer {
                 Thread.sleep(3000);
                 if (!qValueArrived) {
                     processStatus = FAILED;
-                    System.out.println("No q value arrived - terminating the process");
+                    print("No q value arrived - terminating the process");
                     return;
                 }
             } catch (InterruptedException e) {

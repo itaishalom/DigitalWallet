@@ -7,5 +7,5 @@ public interface WalletInterface {
 
     public void store(int key,int value);
 
-    public Object retrieve(int key);
+    public int retrieve(int key);
 }
