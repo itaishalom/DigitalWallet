@@ -50,7 +50,7 @@ public class Dealer extends Node {
     public void startProcess(int key, int value) {
         if (!isDealerReceiver)
             startBroadcastReceiver();
-        refresh(KEY);
+     //   refresh(KEY);
         sendRefresh(KEY);
 
         System.out.println("#############  Begin store key #############");
@@ -94,7 +94,7 @@ public class Dealer extends Node {
                     return;
                 }
             }
-            refresh(mProcess);
+        //    refresh(mProcess);
             sendRefresh(mProcess);
             System.out.println("############# " + mInfo + "  #############");
             q[VALUE] = createArrayOfCoefs();
