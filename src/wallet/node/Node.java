@@ -28,7 +28,7 @@ public class Node {
     private boolean[] valuesAreReady;
     private int[] mCompareNumbers;
     private ConfirmValues[] confirmValuesThread;
-    private boolean[] mIOk;
+    protected boolean[] mIOk;
     int mFaults;
     private WaitForOk[] waitForOks;
     private boolean[] haveIFinished;
@@ -171,6 +171,8 @@ public class Node {
 
             while (running) {
                 Message msg = getMessageFromBroadcast();
+                if(!running)
+                    return;
                 if (msg.getmFrom() == mNumber)
                     continue;
                 switch (msg.getmSubType()) {
@@ -423,7 +425,7 @@ public class Node {
 
     public void print(String s) {
         //    if (mNumber == 1)
-   //     System.out.println(s);
+     //   System.out.println(s);
     }
 
     public class WaitForOk extends Thread {

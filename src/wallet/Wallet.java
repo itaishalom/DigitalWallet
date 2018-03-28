@@ -38,6 +38,9 @@ public class Wallet implements WalletInterface {
 
     @Override
     public void store(int key, int value) {
+        if(client !=null){
+            client.killClientReceiver();
+        }
         dealer.startProcess(key, value);
     }
 

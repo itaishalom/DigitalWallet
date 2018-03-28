@@ -44,6 +44,13 @@ public class Client extends Dealer {
 */
 
 
+    public void killClientReceiver() {
+        broadCastStarted = false;
+        if (container != null)
+            container.shutdown();
+    }
+
+
     public void startProcess(int key) {
         processStatus = ProccesStatus.ACTIVE;
         //     container = new BroadcastReceiverClient();

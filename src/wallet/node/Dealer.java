@@ -14,13 +14,14 @@ public class Dealer extends Node {
     int boundForRandom;
     int[][] q;
     int[][] p;
-    boolean[][] okCounter;
-    Thread[] waitForOks;
+    private boolean[][] okCounter;
+    private Thread[] waitForOks;
     Thread broadcastReceiver;
     BroadcastReceiver container;
+    private boolean isDealerReceiver = true;
 
-    public Dealer(int num, int port, int f,int clientPort) {
-        super(num, port, f,clientPort);
+    public Dealer(int num, int port, int f, int clientPort) {
+        super(num, port, f, clientPort);
         q = new int[2][];
         p = new int[2][];
         okCounter = new boolean[TOTAL_PROCESS_VALUES][(3 * f) + 1];
@@ -34,9 +35,9 @@ public class Dealer extends Node {
         return ProtocolDone[VALUE];
     }
 
-    protected void sendRefresh(int process){
-        Message msg = new Message(mNumber,process,BROADCAST, REFRESH,REFRESH);
-        broadcast(msg,broadCasterSocket);
+    protected void sendRefresh(int process) {
+        Message msg = new Message(mNumber, process, BROADCAST, REFRESH, REFRESH);
+        broadcast(msg, broadCasterSocket);
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
@@ -45,8 +46,13 @@ public class Dealer extends Node {
     }
 
 
+
     public void startProcess(int key, int value) {
+        if (!isDealerReceiver)
+            startBroadcastReceiver();
+        refresh(KEY);
         sendRefresh(KEY);
+
         System.out.println("#############  Begin store key #############");
         q[KEY] = createArrayOfCoefs();
         q[KEY][0] = key; // decide what to do
@@ -55,7 +61,7 @@ public class Dealer extends Node {
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
             calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, KEY);
         }
-        waitForProcessEnd wait = new waitForProcessEnd(value, VALUE, KEY ,"Begin store value");
+        waitForProcessEnd wait = new waitForProcessEnd(value, VALUE, KEY, "Begin store value");
         wait.start();
     }
 
@@ -88,6 +94,7 @@ public class Dealer extends Node {
                     return;
                 }
             }
+            refresh(mProcess);
             sendRefresh(mProcess);
             System.out.println("############# " + mInfo + "  #############");
             q[VALUE] = createArrayOfCoefs();
@@ -101,13 +108,14 @@ public class Dealer extends Node {
     }
 
 
-    protected void calculateAndPrivateSendValues(int nodeNumber, int nodePort, int proccessNumber, int messageProcess) {
+    void calculateAndPrivateSendValues(int nodeNumber, int nodePort, int proccessNumber, int messageProcess) {
         String answer = buildInitialValues(nodeNumber, q[proccessNumber], p[proccessNumber]);
         Message msg = new Message(this.mNumber, messageProcess, PRIVATE, INITIAL_VALUES, answer);
         communication.sendMessageToNode(nodePort, msg);
     }
 
     public void switchReciever() {
+        isDealerReceiver = false;
         container.shutdown();
         super.startBroadcastReceiver();
     }
@@ -115,6 +123,10 @@ public class Dealer extends Node {
 
     @Override
     protected void startBroadcastReceiver() {
+        isDealerReceiver = true;
+        if (container != null) {
+            container.shutdown();
+        }
         container = new BroadcastReceiverDealer();
         broadcastReceiver = new Thread(container);
         broadcastReceiver.start();
@@ -182,14 +194,15 @@ public class Dealer extends Node {
         }
     }
 
-    protected void waitForGValues(){
+    protected void waitForGValues() {
 
     }
 
-    protected int[] getQValue(int processNumber){
+    protected int[] getQValue(int processNumber) {
         return q[processNumber];
     }
-    protected int[] getPValue(int processNumber){
+
+    protected int[] getPValue(int processNumber) {
         return p[processNumber];
     }
 
@@ -222,10 +235,10 @@ public class Dealer extends Node {
                         try {
                             String answer = buildInitialValues(i + 1, getQValue(okProcNumber), getPValue(okProcNumber));
 
-                        Message msg = new Message(mNumber, okProcNumber, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
-                        broadcast(msg, broadCasterSocket);
-                        isProtocolDone = false;
-                        }catch (Exception e){
+                            Message msg = new Message(mNumber, okProcNumber, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
+                            broadcast(msg, broadCasterSocket);
+                            isProtocolDone = false;
+                        } catch (Exception e) {
                             e.printStackTrace();
                         }
                     }
