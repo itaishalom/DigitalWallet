@@ -1,4 +1,4 @@
-import wallet.PolynomialRegression;
+package test;
 import wallet.Wallet;
 
 import java.util.Random;
@@ -7,8 +7,8 @@ import java.util.Random;
  * Created by Itai on 26/02/2018.
  */
 public class Main {
-    static Random rand;
-
+    private static Random rand;
+    public static boolean RUN_FAULT_NODE = false;
     public static void main(String[] args) {
         Wallet myWallet = new Wallet(1);
         rand = new Random();
@@ -18,10 +18,14 @@ public class Main {
         myWallet.store(key, value);
 
         testBadValue(1, key, value, myWallet);
+        System.out.println("###########  Node 1: will be co corrupted now ##############");
+        RUN_FAULT_NODE = true;
         testGoodValue(2, key, value, myWallet);
+
+
         testBadValue(3, key, value, myWallet);
         testGoodValue(4, key, value, myWallet);
-
+        RUN_FAULT_NODE = false;
         testBadValue(5, key, value, myWallet);
         testGoodValue(6, key, value, myWallet);
 

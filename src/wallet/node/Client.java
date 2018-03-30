@@ -20,7 +20,7 @@ public class Client extends Dealer {
     private CalculateQ_V calculateQ_v_thread;
     private boolean broadCastStarted = false;
     private boolean qValueArrived = false;
-
+    waitForProcessEnd wait;
     public enum ProccesStatus {
         DONE,
         ACTIVE,
@@ -61,33 +61,48 @@ public class Client extends Dealer {
         }
         System.out.println("#############  Begin retrieve key #############");
         ProtocolDone[RANDOM_VALUES] = false;
-        ProtocolDone[VALUE] = false;
+        ProtocolDone[KEY_TAG] = false;
+        okCounter[RANDOM_VALUES] = new boolean[(3 * mFaults) + 1];
+        okCounter[KEY_TAG] = new boolean[(3 * mFaults) + 1];
         waitForQValuesStarted = false;
         qValueArrived = false;
         QvValues = new String[(3 * mFaults) + 1];
         qValuesCounter = 0;
-        if (calculateQ_v_thread != null) {
-            try {
+        try {
+            if (calculateQ_v_thread != null) {
                 calculateQ_v_thread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                calculateQ_v_thread = null;
             }
-            calculateQ_v_thread = null;
+            if (waitForOks[KEY_TAG] != null) {
+                waitForOks[KEY_TAG].join();
+                waitForOks[KEY_TAG] = null;
+            }
+            if (waitForOks[RANDOM_VALUES] != null) {
+                waitForOks[RANDOM_VALUES].join();
+                waitForOks[RANDOM_VALUES] = null;
+            }
+            if(wait != null){
+                wait.join();
+                wait = null;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
 
-
-      /*  Message msg = new Message(mNumber,2,BROADCAST,OK,"shit");
-        broadcast(msg,broadCasterSocket);*/
+    /*  Message msg = new Message(mNumber,2,BROADCAST,OK,"shit");
+      broadcast(msg,broadCasterSocket);*/
         sendRefresh(RANDOM_VALUES);
         q[0] = createArrayOfCoefs();
         q[0][0] = mRandom.nextInt(boundForRandom);
         ; // decide what to do
         p[0] = createArrayOfCoefs();
+
         p[0][0] = mRandom.nextInt(boundForRandom);
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
             calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, RANDOM_VALUES);
         }
-        waitForProcessEnd wait = new waitForProcessEnd(key, KEY_TAG, RANDOM_VALUES, "Sending key' bi-polynomial");
+
+        wait = new waitForProcessEnd(key, KEY_TAG, RANDOM_VALUES, "Sending key' bi-polynomial");
         wait.start();
     }
 

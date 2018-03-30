@@ -15,48 +15,7 @@ import java.util.Objects;
 public class Functions {
 
 
-    static void broadcast(Message broadcastMessage, DatagramSocket socket) {
-        List<InetAddress> broadcastList = null;
-   //     System.out.println("Broadcast: " + broadcastMessage);
-        try {
-            broadcastList = listAllBroadcastAddresses();
 
-            if (broadcastList != null && broadcastList.size() > 0) {
-                InetAddress address = broadcastList.get(0);
-                socket = new DatagramSocket();
-                socket.setBroadcast(true);
-
-                byte[] buffer = broadcastMessage.toString().getBytes();
-
-                DatagramPacket packet
-                        = new DatagramPacket(buffer, 0, buffer.length, address, 4445);
-
-                socket.send(packet);
-                //   socket.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    static List<InetAddress> listAllBroadcastAddresses() throws SocketException {
-        List<InetAddress> broadcastList = new ArrayList<>();
-        Enumeration<NetworkInterface> interfaces
-                = NetworkInterface.getNetworkInterfaces();
-        while (interfaces.hasMoreElements()) {
-            NetworkInterface networkInterface = interfaces.nextElement();
-
-            if (networkInterface.isLoopback() || !networkInterface.isUp()) {
-                continue;
-            }
-
-            networkInterface.getInterfaceAddresses().stream()
-                    .map(InterfaceAddress::getBroadcast)
-                    .filter(Objects::nonNull)
-                    .forEach(broadcastList::add);
-        }
-        return broadcastList;
-    }
 
 
     static double predict(String[] vals, int f, int nodeNumber) {

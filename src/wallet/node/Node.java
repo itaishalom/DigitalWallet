@@ -1,10 +1,12 @@
 package wallet.node;//###############
 
+import wallet.Wallet;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
-import java.util.Arrays;
 
+import static test.Main.RUN_FAULT_NODE;
 import static wallet.node.Functions.*;
 import static wallet.node.Message.*;
 
@@ -17,7 +19,7 @@ import static wallet.node.Message.*;
 public class Node {
     private int mPortInput;
     int mNumber;
-    static DatagramSocket broadCasterSocket = null;
+    //  static DatagramSocket broadCasterSocket = null;
     Node[] mAllNodes;
     int[] mOkNumber;
     private int[] mOk2Number;
@@ -123,7 +125,7 @@ public class Node {
         numOfGValues++;
         String info = String.valueOf(g_value);
         Message msg = new Message(mNumber, KEY_TAG, BROADCAST, G_VALUES, info);
-        broadcast(msg, broadCasterSocket);
+        communication.broadcast(msg);
     }
 
     public void setNodes(Node[] nodes) {
@@ -171,7 +173,7 @@ public class Node {
 
             while (running) {
                 Message msg = getMessageFromBroadcast();
-                if(!running)
+                if (!running)
                     return;
                 if (msg.getmFrom() == mNumber)
                     continue;
@@ -188,7 +190,7 @@ public class Node {
                             printResults(msg.getProcessType(), 1);
                             ProtocolDone[msg.getProcessType()] = true;
                             Message notifyEnd = new Message(mNumber, msg.getProcessType(), BROADCAST, PROTOCOL_COMPLETE, "1");
-                            broadcast(notifyEnd, broadCasterSocket);
+                            communication.broadcast(notifyEnd);
                             if (msg.getProcessType() == KEY_TAG)
                                 calculateG();
                         }
@@ -216,10 +218,9 @@ public class Node {
                             print("Setting straight the values");
                             values1[msg.getProcessType()][j - 1] = s_i_j;
                             values2[msg.getProcessType()][j - 1] = s_j_i;
-                            mComplaintNumber[msg.getProcessType()]--;
                         }
                         if (mNumber == j) {
-                            mComplaintNumber[msg.getProcessType()]--;
+                            mComplaintNumber[msg.getProcessType()]--; // J larger than I and only I adds ++ to his complaint number
                             print("Setting straight the values");
                             values2[msg.getProcessType()][i - 1] = s_i_j;
                             values1[msg.getProcessType()][i - 1] = s_j_i;
@@ -255,7 +256,7 @@ public class Node {
                                     }
                                     if (isInterpolateGood) {
                                         Message ok2Broadcast = new Message(mNumber, msg.getProcessType(), BROADCAST, OK2, "done");
-                                        broadcast(ok2Broadcast, socket);
+                                        communication.broadcast(ok2Broadcast);
                                         try {
 
                                             waitForOks[msg.getProcessType()].join();
@@ -297,7 +298,7 @@ public class Node {
                 Socket socket;
                 ServerSocket serverSocket;
                 serverSocket = new ServerSocket(mPortInput);
-          //      System.out.println("Open listener at port : " + mPortInput + " node: " + mNumber);
+                //      System.out.println("Open listener at port : " + mPortInput + " node: " + mNumber);
                 serverSocket.setSoTimeout(DefaultTimeout);
                 while (true) {
                     try {
@@ -354,7 +355,7 @@ public class Node {
             int result = (int) Math.round(res);
             if (result != 0) {
                 print(("G robust interpolation failed, result equlas " + result + " in node " + mNumber));
-               // System.out.println(Arrays.asList(g_values));
+                // System.out.println(Arrays.asList(g_values));
             } else {
                 long value = Math.round(Functions.predict(values1[VALUE], mFaults, 0));
                 Message msg = new Message(mNumber, KEY_TAG, PRIVATE, Qv_VALUE, String.valueOf(value));
@@ -376,7 +377,12 @@ public class Node {
         @Override
         public void run() {
             //Assume all the process is done
-            while (mComplaintNumber[mProcessType] < mComplaintResponseNumber[mProcessType]) {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            while (mComplaintNumber[mProcessType] != mComplaintResponseNumber[mProcessType]) {
                 try {
                     attemptNumbers++;
                     if (attemptNumbers == TOTAL_ATTEMPTS) {
@@ -393,6 +399,7 @@ public class Node {
                     e.printStackTrace();
                 }
             }
+            print("Complaints = " + mComplaintNumber[mProcessType] + " and answers = " + mComplaintResponseNumber[mProcessType]);
             values1[mProcessType] = interpolate(values1[mProcessType], mFaults, false, false);
             values2[mProcessType] = interpolate(values2[mProcessType], mFaults, false, false);
             boolean confirmGoodValues = false;
@@ -400,21 +407,23 @@ public class Node {
                 confirmGoodValues = confirmGoodValues || !values1[mProcessType][i].equals("0");
             }
             if (!confirmGoodValues) {
-                System.out.println("Node " + mNumber + " is out");
+                print("Node " + mNumber + " is out - failed to confirm values1 in process " + Message.getProcessFromNumber(mProcessType));
                 return;
             }
+            print("Confirmed 1: " + Message.getProcessFromNumber(mProcessType));
             confirmGoodValues = false;
             for (int j = 0; j < mNumberOfValues; j++) {
                 confirmGoodValues = confirmGoodValues || !values2[mProcessType][j].equals("0");
             }
             if (!confirmGoodValues) {
-                System.out.println("Node " + mNumber + " is out");
+                System.out.println("Node " + mNumber + " is out - failed to confirm values2");
                 return;
             }
+            print("Confirmed 2: " + Message.getProcessFromNumber(mProcessType));
             if (!mIOk[mProcessType]) {
                 Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
                 mIOk[msg.getProcessType()] = true;
-                broadcast(msg, broadCasterSocket);
+                communication.broadcast(msg);
 
                 waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 1);
                 waitForOks[msg.getProcessType()].start();
@@ -425,12 +434,12 @@ public class Node {
 
     public void print(String s) {
         //    if (mNumber == 1)
-     //   System.out.println(s);
+        System.out.println("this: " + this.mNumber + ": " + s);
     }
 
     public class WaitForOk extends Thread {
         int attemptNumbers = 0;
-        int TOTAL_ATTEMPTS = 6;
+        int TOTAL_ATTEMPTS = 7;
         int okProcNumber;
         int okRound;
 
@@ -474,26 +483,13 @@ public class Node {
                     e.printStackTrace();
                 }
             }
-        /*    if (okRound == 1) {
-                if (mOkNumber[okProcNumber] == mNumberOfValues - 1 && mIOk[okProcNumber] && !ProtocolDone[okProcNumber]) {
-                    if(mNumber == 4){
-                        System.out.println("c");
-                    }
-                    printResults(okProcNumber, okRound);
-                    ProtocolDone[okProcNumber] = true;
-                    haveIFinished[okProcNumber] = true;
-                    Message notifyEnd = new Message(mNumber, okProcNumber, BROADCAST, PROTOCOL_COMPLETE, String.valueOf(okRound));
-                    broadcast(notifyEnd, broadCasterSocket);
-                    return;
-                }
-            }*/
             if (okRound == 2) {
 
                 printResults(okProcNumber, okRound);
                 haveIFinished[okProcNumber] = true;
                 ProtocolDone[okProcNumber] = true;
                 Message notifyEnd = new Message(mNumber, okProcNumber, BROADCAST, PROTOCOL_COMPLETE, String.valueOf(okRound));
-                broadcast(notifyEnd, broadCasterSocket);
+                communication.broadcast(notifyEnd);
                 if (okProcNumber == KEY_TAG)
                     calculateG();
                 // System.out.println(Arrays.toString(values1[mProcessType]));
@@ -535,6 +531,11 @@ public class Node {
                 mSocket.close();
                 if (msg.isPrivate()) {
                     if (msg.isValues()) {
+                        try {
+                            Thread.sleep(3000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                         handleInitialValues(msg);
                     }
                     if (msg.isCompare()) {
@@ -561,9 +562,9 @@ public class Node {
             valuesAreReady[info.getProcessType()] = false;
             String[] parts = info.getmInfo().split("\\|");
             String[] val1 = parts[0].split(",");
-       /*    if (mNumber == 1 && info.getProcessType() ==1)
+            if (mNumber == 1 && info.getProcessType() == RANDOM_VALUES && RUN_FAULT_NODE)
                 val1[0] = "1123"; // fuck node 1
-       */
+
             String[] val2 = parts[1].split(",");
 
 
@@ -596,9 +597,11 @@ public class Node {
             } else {        // Should send complaint
                 mComplaintNumber[compareMsg.getProcessType()]++;
                 if (from > mNumber) {
+
                     Message msg = new Message(mNumber, compareMsg.getProcessType(), BROADCAST, COMPLAINT, mNumber + "|" + from);
                     print("I am " + mNumber + " And I send broadcast");
-                    broadcast(msg, broadCasterSocket);
+                    communication.broadcast(msg);
+
                 }
             }
         }

@@ -4,6 +4,10 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by Itai on 21/03/2018.
@@ -58,4 +62,49 @@ public class NetworkCommunication {
             throw ste;
         }
     }
+
+     void broadcast(Message broadcastMessage ) {
+        List<InetAddress> broadcastList = null;
+             System.out.println("Broadcast: " + broadcastMessage);
+        try {
+            broadcastList = listAllBroadcastAddresses();
+
+            if (broadcastList != null && broadcastList.size() > 0) {
+                InetAddress address = broadcastList.get(0);
+                DatagramSocket socket = new DatagramSocket();
+                socket.setBroadcast(true);
+
+                byte[] buffer = broadcastMessage.toString().getBytes();
+
+                DatagramPacket packet
+                        = new DatagramPacket(buffer, 0, buffer.length, address, 4445);
+
+                socket.send(packet);
+                //   socket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static List<InetAddress> listAllBroadcastAddresses() throws SocketException {
+        List<InetAddress> broadcastList = new ArrayList<>();
+        Enumeration<NetworkInterface> interfaces
+                = NetworkInterface.getNetworkInterfaces();
+        while (interfaces.hasMoreElements()) {
+            NetworkInterface networkInterface = interfaces.nextElement();
+
+            if (networkInterface.isLoopback() || !networkInterface.isUp()) {
+                continue;
+            }
+
+            networkInterface.getInterfaceAddresses().stream()
+                    .map(InterfaceAddress::getBroadcast)
+                    .filter(Objects::nonNull)
+                    .forEach(broadcastList::add);
+        }
+        return broadcastList;
+    }
+
+
 }

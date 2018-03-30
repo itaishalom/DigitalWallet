@@ -2,7 +2,6 @@ package wallet.node;
 
 import java.util.Random;
 
-import static wallet.node.Functions.broadcast;
 import static wallet.node.Functions.generatePrime;
 import static wallet.node.Message.*;
 
@@ -14,8 +13,8 @@ public class Dealer extends Node {
     int boundForRandom;
     int[][] q;
     int[][] p;
-    private boolean[][] okCounter;
-    private Thread[] waitForOks;
+     boolean[][] okCounter;
+     Thread[] waitForOks;
     Thread broadcastReceiver;
     BroadcastReceiver container;
     private boolean isDealerReceiver = true;
@@ -37,7 +36,7 @@ public class Dealer extends Node {
 
     protected void sendRefresh(int process) {
         Message msg = new Message(mNumber, process, BROADCAST, REFRESH, REFRESH);
-        broadcast(msg, broadCasterSocket);
+        communication.broadcast(msg);
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
@@ -84,13 +83,13 @@ public class Dealer extends Node {
         public void run() {
             while (!ProtocolDone[mEndProcess]) {
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(10000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
                 attemptNumbers++;
                 if (attemptNumbers == TOTAL_ATTEMPTS) {
-                    System.out.println("Dealer failed");
+                    print("Dealer failed");
                     return;
                 }
             }
@@ -166,16 +165,17 @@ public class Dealer extends Node {
                         int j = Integer.parseInt(nodes[1]);
                         if (j == mNumber)
                             mComplaintNumber[msg.getProcessType()]--;
-                        long result1 = computePolynomial(q[msg.getProcessType()], i) * computePolynomial(p[msg.getProcessType()], j);
-                        long result2 = computePolynomial(p[msg.getProcessType()], i) * computePolynomial(q[msg.getProcessType()], j);
+                        long result1 = computePolynomial(getQValue(msg.getProcessType()), i) * computePolynomial(getPValue(msg.getProcessType()), j);
+                        long result2 = computePolynomial(getPValue(msg.getProcessType()), i) * computePolynomial(getQValue(msg.getProcessType()), j);
                         Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
-                        broadcast(newMsg, broadCasterSocket);
+                        communication.broadcast(newMsg);
                         break;
                     }
                     case OK: {
                         mOkNumber[msg.getProcessType()]++;
                         okCounter[msg.getProcessType()][msg.getmFrom() - 1] = true;
                         if (waitForOks[msg.getProcessType()] == null) {
+                            print("wait for ok starting for process " + getProcessFromNumber(msg.getProcessType()));
                             waitForOks[msg.getProcessType()] = new WaitForOkDealer(msg.getProcessType());
                             waitForOks[msg.getProcessType()].start();
                         }
@@ -210,6 +210,7 @@ public class Dealer extends Node {
 
         public WaitForOkDealer(int processType) {
             super(processType, 0);
+            attemptNumbers=0;
         }
 
         @Override
@@ -217,6 +218,9 @@ public class Dealer extends Node {
             try {
                 attemptNumbers++;
                 int counter = 0;
+                if(mNumber == 5){
+                    System.out.println("here");
+                }
                 while (counter < mNumberOfValues - mFaults) {
                     Thread.sleep(5000);
                     counter = 0;
@@ -234,9 +238,9 @@ public class Dealer extends Node {
                     if (!okCounter[okProcNumber][i]) {
                         try {
                             String answer = buildInitialValues(i + 1, getQValue(okProcNumber), getPValue(okProcNumber));
-
+                            mComplaintResponseNumber[okProcNumber]++;
                             Message msg = new Message(mNumber, okProcNumber, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
-                            broadcast(msg, broadCasterSocket);
+                            communication.broadcast(msg);
                             isProtocolDone = false;
                         } catch (Exception e) {
                             e.printStackTrace();
