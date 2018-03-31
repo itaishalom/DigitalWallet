@@ -353,7 +353,7 @@ public class Node {
 
             Double res = interpolateRobust(g_values, 2 * mFaults, 0, mNumberOfValues - mFaults);
             if (res == null) {
-                System.out.println("Node " + mNumber + " failed to reconstruct G polynomial");
+                print("Node " + mNumber + " failed to reconstruct G polynomial");
                 return;
             }
             int result = (int) Math.round(res);
