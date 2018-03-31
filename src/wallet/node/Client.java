@@ -172,11 +172,10 @@ public class Client extends Dealer {
         if (!waitForQValuesStarted) {
             waitForQValuesStarted = true;
             try {
-                Thread.sleep(3000);
+                Thread.sleep(6000);
                 if (!qValueArrived) {
                     processStatus = FAILED;
                     print("No q value arrived - terminating the process");
-                    return;
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();

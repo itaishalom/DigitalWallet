@@ -218,9 +218,6 @@ public class Dealer extends Node {
             try {
                 attemptNumbers++;
                 int counter = 0;
-                if(mNumber == 5){
-                    System.out.println("here");
-                }
                 while (counter < mNumberOfValues - mFaults) {
                     Thread.sleep(5000);
                     counter = 0;

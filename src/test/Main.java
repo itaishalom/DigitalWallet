@@ -18,14 +18,14 @@ public class Main {
         myWallet.store(key, value);
 
         testBadValue(1, key, value, myWallet);
-        System.out.println("###########  Node 1: will be co corrupted now ##############");
+        System.out.println("###########  Node 1: will be corrupted now ##############");
         RUN_FAULT_NODE = true;
         testGoodValue(2, key, value, myWallet);
-
-
         testBadValue(3, key, value, myWallet);
+
         testGoodValue(4, key, value, myWallet);
         RUN_FAULT_NODE = false;
+        System.out.println("###########  Node 1: will be OK ##############");
         testBadValue(5, key, value, myWallet);
         testGoodValue(6, key, value, myWallet);
 

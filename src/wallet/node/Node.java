@@ -224,6 +224,10 @@ public class Node {
                             print("Setting straight the values");
                             values2[msg.getProcessType()][i - 1] = s_i_j;
                             values1[msg.getProcessType()][i - 1] = s_j_i;
+                            if(!values1[msg.getProcessType()][i - 1].equals(s_j_i)){
+                            }
+                            if(!values2[msg.getProcessType()][i - 1].equals( s_i_j)){
+                            }
                         }
 
                         break;
@@ -334,8 +338,8 @@ public class Node {
                 attemptNumbers++;
                 if (attemptNumbers == TOTAL_ATTEMPTS) {
                     for (int i = 0; i < mNumberOfValues; i++) {
-                        values1[mProcessType][i] = "0";
-                        values2[mProcessType][i] = "0";
+                        values1[KEY_TAG][i] = "0";
+                        values2[KEY_TAG][i] = "0";
                     }
                     System.out.println("Not enough G's to restore");
                     return;
@@ -434,7 +438,7 @@ public class Node {
 
     public void print(String s) {
         //    if (mNumber == 1)
-        System.out.println("this: " + this.mNumber + ": " + s);
+     //  System.out.println("this: " + this.mNumber + ": " + s);
     }
 
     public class WaitForOk extends Thread {
