@@ -2,12 +2,7 @@ package wallet.node;
 
 import wallet.PolynomialRegression;
 
-import java.io.IOException;
-import java.net.*;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * Created by Itai on 10/03/2018.
@@ -15,9 +10,13 @@ import java.util.Objects;
 public class Functions {
 
 
-
-
-
+    /**
+     * After interpolation success - predicts the value of nodeNumber at the polynomial
+     * @param vals - Y values (x values are the indecies)
+     * @param f - The degree of the polynomial
+     * @param nodeNumber - The x value to predict it's y value
+     * @return - P(nodeNumber)
+     */
     static double predict(String[] vals, int f, int nodeNumber) {
         double[] y = new double[vals.length];
         for (int i = 0; i < vals.length; i++) {
@@ -33,8 +32,15 @@ public class Functions {
         return 0;
     }
 
+    /**
+     * This functions tries to interpolate according to the input value even if there are faulty values
+     * @param vals - Y values (x values are the indecies)
+     * @param f - The degree of the polynomial
+     * @param value - The x value to predict it's y value
+     * @param numOfCorrectValues - The polynomial must agree with at least this number of values
+     * @return - P(value)
+     */
     static Double interpolateRobust(String[] vals, int f, int value, int numOfCorrectValues) {
-
         ArrayList<Double> yVals = new ArrayList<>();
         ArrayList<Double> xVals = new ArrayList<>();
         for (int i = 0; i < vals.length; i++) {
@@ -54,22 +60,22 @@ public class Functions {
         return null;
     }
 
-
-    static String[] interpolate(String[] vals, int f, boolean isRobust, boolean returnNullIfFails) {
-
+    /**
+     * Translates string array to double array and then attempts to interpolate the points
+     * @param vals - Y values (x values are the indecies)
+     * @param f - The degree of the polynomial
+     * @param returnNullIfFails - If true returns null - else put zeros
+     * @return - If the interpolation success - returns the input array, else zeros/null
+     */
+    static String[] interpolate(String[] vals, int f,  boolean returnNullIfFails) {
         double[] y = new double[vals.length];
         for (int i = 0; i < vals.length; i++) {
             y[i] = Double.parseDouble(vals[i]);
         }
-/*        if (mNumber == 1 && confirmValuesThread == null)         // Fuck node 1
-            y[1] += 2.0;*/
-        //        y[y.length-1] = y[y.length-1] *3;
         double[] x = new double[vals.length];
         for (int i = 0; i < x.length; i++) {
             x[i] = i + 1;
         }
-        //     y[0] = 300;
-
         boolean condition = (new PolynomialRegression(x, y, f)).R2() == 1.0;
 
         if (!condition) {
@@ -78,9 +84,6 @@ public class Functions {
             for (int i = 0; i < vals.length; i++) {
                 vals[i] = "0";
             }
-            //     System.out.println("bad polynomial");
-        } else {
-            //  System.out.println("good polynomial");
         }
         return vals;
     }
@@ -93,7 +96,7 @@ public class Functions {
 
     private static PolynomialRegression doCombine(ArrayList<Double> arrX, double[] resX, ArrayList<Double> arrY, double[] resY, int currIndex, int level, int r, int numOfOkPoints) {
         if (level == r) {
-            return printArray(resX, resY, r, arrX, arrY,numOfOkPoints);
+            return areValuesInterpolate(resX, resY, r, arrX, arrY,numOfOkPoints);
         }
         for (int i = currIndex; i < arrX.size(); i++) {
             resX[level] = arrX.get(i);
@@ -109,7 +112,7 @@ public class Functions {
         return null;
     }
 
-    private static PolynomialRegression printArray(double[] resX, double[] resY, int f, ArrayList<Double> arrX, ArrayList<Double> arrY, int numOfOkPoints) {
+    private static PolynomialRegression areValuesInterpolate(double[] resX, double[] resY, int f, ArrayList<Double> arrX, ArrayList<Double> arrY, int numOfOkPoints) {
         PolynomialRegression p = new PolynomialRegression(resX, resY, f);
         if (p.R2() == 1.0 && checkCorrectnessOfPolynomial(p, arrX, arrY, numOfOkPoints)) {
             return p;
@@ -124,17 +127,15 @@ public class Functions {
                 counter++;
             }
         }
-        if (counter >= numOfOkPoints)
-            return true;
-        return false;
+        return counter >= numOfOkPoints;
     }
 
     /**
-     * Calculates the first prime number that is greater than 10*f
+     * Calculates the first prime number that is greater than 15*f
      *
-     * @return prime number that is greater than 10*f
+     * @return prime number that is greater than 15*f
      */
-    public static int generatePrime(int f) {
+    static int generatePrime(int f) {
         boolean isPrime = true;
         int n = (15 * f);
         do {
