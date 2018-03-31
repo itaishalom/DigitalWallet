@@ -1,7 +1,5 @@
 package wallet.node;//###############
 
-import wallet.Wallet;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
@@ -30,7 +28,7 @@ public class Node {
     private boolean[] valuesAreReady;
     private int[] mCompareNumbers;
     private ConfirmValues[] confirmValuesThread;
-    protected boolean[] mIOk;
+    private boolean[] mIOk;
     int mFaults;
     private WaitForOk[] waitForOks;
     private boolean[] haveIFinished;
@@ -189,12 +187,16 @@ public class Node {
                     return;
                 if (msg.getmFrom() == mNumber)
                     continue;
-                incomeMessageHAndler(msg);
+                incomeMessageHandler(msg);
             }
         }
     }
 
-    private void incomeMessageHAndler(Message msg) {
+    /**
+     * Handles incoming message - weather it's a broadcast or private
+     * @param msg - Incoming message to handle
+     */
+    private void incomeMessageHandler(Message msg) {
         switch (msg.getmSubType()) {
             case INITIAL_VALUES: {
                     try {
@@ -324,6 +326,9 @@ public class Node {
     }
 
 
+    /**
+     * Makes the node a server - It allows to get income private sessions
+     */
     public class NodeServerListener extends Thread {
         private int DefaultTimeout = 5000;
 
@@ -350,6 +355,10 @@ public class Node {
         }
     }
 
+    /**
+     * Handles income private sessions
+     * @param socket - The incoming socket to handle
+     */
     protected void startSession(Socket socket) {
         Thread a = new NodeIncomeDataHandler(socket);//, listening, allSocks);    //The session class gets the connected socket to handle
         a.start();    //If true, start the session
@@ -564,7 +573,7 @@ public class Node {
                 System.out.flush();
                 msg = new Message(output);
                 mSocket.close();
-                incomeMessageHAndler(msg);
+                incomeMessageHandler(msg);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -574,7 +583,7 @@ public class Node {
     /**
      * First time that the node receives data from the dealer
      *
-     * @param info
+     * @param info - the info message from the dealer
      */
     private void handleInitialValues(Message info) {
         valuesAreReady[info.getProcessType()] = false;
