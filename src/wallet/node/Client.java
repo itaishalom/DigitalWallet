@@ -27,30 +27,31 @@ public class Client extends Dealer {
         FAILED,
     }
 
+    /** 
+    * Public constructor 
+    * * @param num  - Node number 
+    * @param port - Listen on this port 
+    * @param f    - Number of faulty nodes allowed 
+    */
     public Client(int num, int port, int f) {
         super(num, port, f, port);
         QvValues = new String[(3 * f) + 1];
     }
 
-/*
-    @Override
-    protected void startBroadcastReceiver() {
-  */
-/*      container = new BroadcastReceiverClient();
-        broadcastReceiver = new Thread(container);
-        broadcastReceiver.start();*//*
-
-    }
-*/
-
-
+    /** 
+    * Kills the broadcast receiver listener 
+    */
     public void killClientReceiver() {
         broadCastStarted = false;
         if (container != null)
             container.shutdown();
     }
 
-
+/** 
+* Starts process to retrieve the value stored in previous process. 
+* 
+* @param key_tag - The client will try to restore value with key_tag and will success if key_tag=key. 
+*/
     public void startProcess(int key) {
         processStatus = ProccesStatus.ACTIVE;
         //     container = new BroadcastReceiverClient();
@@ -88,9 +89,6 @@ public class Client extends Dealer {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
-    /*  Message msg = new Message(mNumber,2,BROADCAST,OK,"shit");
-      broadcast(msg,broadCasterSocket);*/
         sendRefresh(RANDOM_VALUES);
         q[0] = createArrayOfCoefs();
         q[0][0] = mRandom.nextInt(boundForRandom);
@@ -106,6 +104,11 @@ public class Client extends Dealer {
         wait.start();
     }
 
+    /** 
+    * If the client in process it will wait until it success or fails. 
+    * 
+    * @return - If client failed will return -1, else the value sotred 
+    */
     public int getValue() {
         while (processStatus == ProccesStatus.ACTIVE) {
             try {
@@ -128,6 +131,9 @@ public class Client extends Dealer {
         a.start();    //If true, start the session
     }
 
+    /** 
+    * Handler to handle income private messages to the client - made for the Q_v Values 
+    */
     public class CleintIncomeDataHandler extends Thread {
         Socket mSocket;
 
@@ -167,6 +173,10 @@ public class Client extends Dealer {
         }
     }
 
+    /** 
+    * This function waits for G values to arrive from nodes. 
+    If no node sends G values after * X seconds- the process fails 
+    */
     @Override
     protected void waitForGValues() {
         if (!waitForQValuesStarted) {
