@@ -1,80 +1,274 @@
 package wallet.node;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.MulticastSocket;
 import java.util.Random;
 
-import static wallet.node.Functions.broadcast;
+import static wallet.node.Functions.computePolynomial;
+import static wallet.node.Functions.createArrayOfCoefs;
+import static wallet.node.Functions.generatePrime;
 import static wallet.node.Message.*;
 
 /**
  * Created by Itai on 26/02/2018.
  */
 public class Dealer extends Node {
-    private int mFaults;
-    private Random mRandom;
-    Node[] mNodes;
-    private int boundForRandom;
-    private int[] q;
-    private int[] p;
+    Random mRandom;
+    int boundForRandom;
+    int[][] q;
+    int[][] p;
+    boolean[][] okCounter;
+    Thread[] waitForOks;
+    Thread broadcastReceiver;
+    BroadcastReceiver container;
+    private boolean isDealerReceiver = true;
 
-    public Dealer(int port, int f, Node[] nodes) {
-        super(0, port,f);
+    public Dealer(int num, int port, int f, int clientPort) {
+        super(num, port, f, clientPort);
+        q = new int[2][];
+        p = new int[2][];
+        okCounter = new boolean[TOTAL_PROCESS_VALUES][(3 * f) + 1];
+        waitForOks = new Thread[TOTAL_PROCESS_VALUES];
         mFaults = f;
         mRandom = new Random();
-        mNodes = nodes;
-        boundForRandom = generatePrime();
+        boundForRandom = generatePrime(mFaults);
     }
 
-    public void startProcess(Object ob) {
+    public boolean isStoreDone() {
+        return ProtocolDone[VALUE];
+    }
 
-        q = createArrayOfCoefs();
-        q[0] = 2; // decide what to do
-        p = createArrayOfCoefs();
-        p[0] = 1;
-        for (Node mNode : mNodes) {  // Iterate over all Nodes
-            String answer = buildInitialValues(mNode.mNumber, q, p);
-            Message msg = new Message(this.mNumber, PRIVATE, INITIAL_VALUES, answer);
-            sendMessageToNode(mNode, msg);
+    protected void sendRefresh(int process) {
+        Message msg = new Message(mNumber, process, BROADCAST, REFRESH, REFRESH);
+        communication.broadcast(msg);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
+
+    public void startProcess(int key, int value) {
+        if (!isDealerReceiver)
+            startBroadcastReceiver();
+        //   refresh(KEY);
+        sendRefresh(KEY);
+
+        System.out.println("#############  Begin store key #############");
+        q[KEY] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
+        q[KEY][0] = key; // decide what to do
+        p[KEY] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
+        p[KEY][0] = 1;
+        for (Node node_i : mAllNodes) {  // Iterate over all Nodes
+            calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, KEY);
+        }
+        waitForProcessEnd wait = new waitForProcessEnd(value, VALUE, KEY, "Begin store value");
+        wait.start();
+    }
+
+    public class waitForProcessEnd extends Thread {
+        int attemptNumbers = 0;
+        int TOTAL_ATTEMPTS = 5;
+        int mValue;
+        int mProcess;
+        int mEndProcess;
+        String mInfo;
+
+        waitForProcessEnd(int value, int prosess, int endProcess, String message) {
+            mValue = value;
+            mProcess = prosess;
+            mEndProcess = endProcess;
+            mInfo = message;
+        }
+
+        @Override
+        public void run() {
+            while (!ProtocolDone[mEndProcess]) {
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                attemptNumbers++;
+                if (attemptNumbers == TOTAL_ATTEMPTS) {
+                    print("Dealer failed");
+                    return;
+                }
+            }
+            //    refresh(mProcess);
+            sendRefresh(mProcess);
+            System.out.println("############# " + mInfo + "  #############");
+            q[VALUE] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
+            q[VALUE][0] = mValue; // decide what to do
+            p[VALUE] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
+            p[VALUE][0] = 1;
+            for (Node node_i : mAllNodes) {  // Iterate over all Nodes
+                calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), VALUE, mProcess);
+            }
+        }
+    }
+
+
+    void calculateAndPrivateSendValues(int nodeNumber, int nodePort, int proccessNumber, int messageProcess) {
+        String answer = buildInitialValues(nodeNumber, q[proccessNumber], p[proccessNumber]);
+        Message msg = new Message(this.mNumber, messageProcess, PRIVATE, INITIAL_VALUES, answer);
+        communication.sendMessageToNode(nodePort, msg);
+    }
+
+    public void switchReciever() {
+        isDealerReceiver = false;
+        container.shutdown();
+        super.startBroadcastReceiver();
+    }
+
+
     @Override
     protected void startBroadcastReceiver() {
-        Thread broadcastReceiver = new BroadcastReceiverDealer();
+        isDealerReceiver = true;
+        if (container != null) {
+            container.shutdown();
+        }
+        container = new BroadcastReceiverDealer();
+        broadcastReceiver = new Thread(container);
         broadcastReceiver.start();
     }
 
+
     public class BroadcastReceiverDealer extends BroadcastReceiver {
 
-        private BroadcastReceiverDealer() {
+        BroadcastReceiverDealer() {
             super();
+        }
 
+
+        public void shutdown() {
+            running = false;
+        }
+
+        @Override
+        public void run() {
+            while (running) {
+                Message msg = getMessageFromBroadcast();
+                if (!running)
+                    return;
+                switch (msg.getmSubType()) {
+                    case PROTOCOL_COMPLETE:
+                        if (!ProtocolDone[msg.getProcessType()]) {
+                            ProtocolDone[msg.getProcessType()] = true;
+                            printResults(msg.getProcessType(), Integer.valueOf(msg.getmInfo()));
+
+                        }
+                        break;
+                    case COMPLAINT: {
+                        mComplaintNumber[msg.getProcessType()]++;
+                        String data = msg.getmInfo();
+                        String[] nodes = data.split("\\|");
+                        int i = Integer.parseInt(nodes[0]);
+                        int j = Integer.parseInt(nodes[1]);
+                        if (j == mNumber)
+                            mComplaintNumber[msg.getProcessType()]--;
+                        long result1 = computePolynomial(getQValue(msg.getProcessType()), i) * computePolynomial(getPValue(msg.getProcessType()), j);
+                        long result2 = computePolynomial(getPValue(msg.getProcessType()), i) * computePolynomial(getQValue(msg.getProcessType()), j);
+                        Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
+                        communication.broadcast(newMsg);
+                        break;
+                    }
+                    case OK: {
+                        mOkNumber[msg.getProcessType()]++;
+                        okCounter[msg.getProcessType()][msg.getmFrom() - 1] = true;
+                        if (waitForOks[msg.getProcessType()] == null) {
+                            synchronized (this) {
+                                if (waitForOks[msg.getProcessType()] == null) {
+                                    print("wait for ok starting for process " + getProcessFromNumber(msg.getProcessType()));
+                                    waitForOks[msg.getProcessType()] = new WaitForOkDealer(msg.getProcessType());
+                                    if (!((WaitForOkDealer) waitForOks[msg.getProcessType()]).isRunning())
+                                        waitForOks[msg.getProcessType()].start();
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    case COMPLAINT_ANSWER: {
+                        mComplaintResponseNumber[msg.getProcessType()]++;
+                        break;
+                    }
+                    case G_VALUES: {
+                        waitForGValues();
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    protected void waitForGValues() {
+
+    }
+
+    protected int[] getQValue(int processNumber) {
+        return q[processNumber];
+    }
+
+    protected int[] getPValue(int processNumber) {
+        return p[processNumber];
+    }
+
+    public class WaitForOkDealer extends WaitForOk {
+        boolean running = false;
+
+        public WaitForOkDealer(int processType) {
+            super(processType, 0);
+            attemptNumbers = 0;
+        }
+
+        public boolean isRunning() {
+            return running;
         }
 
         @Override
         public void run() {
             running = true;
-            while (running) {
+            try {
+                attemptNumbers++;
+                int counter = 0;
+                while (counter < mNumberOfValues - mFaults) {
+                    Thread.sleep(5000);
+                    counter = 0;
+                    for (int i = 0; i < okCounter[okProcNumber].length; i++) {
+                        if (okCounter[okProcNumber][i])
+                            counter++;
+                    }
+                    if (attemptNumbers == TOTAL_ATTEMPTS) {
+                        System.out.println("Dealer failed");
+                        return;
+                    }
+                }
+                boolean isProtocolDone = true;
+                for (int i = 0; i < okCounter[okProcNumber].length; i++) {
+                    if (!okCounter[okProcNumber][i]) {
+                        try {
+                            String answer = buildInitialValues(i + 1, getQValue(okProcNumber), getPValue(okProcNumber));
+                            mComplaintResponseNumber[okProcNumber]++;
+                            Message msg = new Message(mNumber, okProcNumber, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
+                            communication.broadcast(msg);
+                            isProtocolDone = false;
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
 
-                Message msg = getMessageFromBroadcast();
-
-                if (msg.isComplaint()) {
-                    String data = msg.getmInfo();
-                    String[] nodes = data.split("\\|");
-                    int i = Integer.parseInt(nodes[0]);
-                    int j = Integer.parseInt(nodes[1]);
-                    long result1 = computePolynomial(q, i) * computePolynomial(p, j);
-                    long result2 = computePolynomial(p, i) * computePolynomial(q, j);
-                    Message newMsg = new Message(mNumber, BROADCAST, COMPLAINT_ANSWER,  + i + "," + j + "|" + result1 + "," + result2);
-
-                        broadcast(newMsg,broadCasterSocket);
+                if (isProtocolDone && !ProtocolDone[okProcNumber]) {
+                    ProtocolDone[okProcNumber] = true;
+                    printResults(okProcNumber, 1);
 
                 }
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
+
         }
+
     }
 
 
@@ -86,66 +280,16 @@ public class Dealer extends Node {
         return response.toString();
     }
 
-    private void buildResponse(StringBuilder response, int i, int[] q, int[] secondPoly) {
+    protected void buildResponse(StringBuilder response, int i, int[] q, int[] secondPoly) {
         long val1 = computePolynomial(q, i);
-        for (int n = 0; n < mNodes.length; n++) {
-            long val2 = computePolynomial(secondPoly, mNodes[n].mNumber);
-            if (n == mNodes.length - 1)
+        for (int n = 0; n < mAllNodes.length; n++) {
+            long val2 = computePolynomial(secondPoly, mAllNodes[n].mNumber);
+            if (n == mAllNodes.length - 1)
                 response.append(val1 * val2);
             else
                 response.append(val1 * val2).append(",");
         }
     }
 
-    /**
-     * Computes the polynomial arr[0]*x^0 + .. + arr[f]*x^f
-     *
-     * @param arr - array of coefficients
-     * @param x   - the value to calculate with
-     * @return - The value of the polynomial in x.
-     */
-    private long computePolynomial(int[] arr, int x) {
-        long res = 0;
-        for (int i = 0; i < arr.length; i++) {
-            res += arr[i] * Math.pow(x, i);
-        }
-        return res;
-    }
-
-    /**
-     * Randomly creates array of coefficients to simulate a polynomial
-     *
-     * @return - Array of coefficients
-     */
-    private int[] createArrayOfCoefs() {
-        int[] arr = new int[mFaults + 1];
-        for (int i = 1; i < arr.length; i++) {
-            arr[i] = mRandom.nextInt(boundForRandom);
-        }
-        return arr;
-    }
-
-    /**
-     * Calculates the first prime number that is greater than 10*f
-     *
-     * @return prime number that is greater than 10*f
-     */
-    private int generatePrime() {
-        boolean isPrime = true;
-        int n = (10 * mFaults);
-        do {
-            isPrime = true;
-            n++;
-            for (long factor = 2; factor * factor <= n; factor++) {
-
-                // if factor divides evenly into n, n is not prime, so break out of loop
-                if (n % factor == 0) {
-                    isPrime = false;
-                    break;
-                }
-            }
-        } while (!isPrime);
-        return n;
-    }
 
 }

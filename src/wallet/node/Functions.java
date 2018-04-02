@@ -2,12 +2,8 @@ package wallet.node;
 
 import wallet.PolynomialRegression;
 
-import java.io.IOException;
-import java.net.*;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Objects;
+import java.util.Random;
 
 /**
  * Created by Itai on 10/03/2018.
@@ -15,109 +11,181 @@ import java.util.Objects;
 public class Functions {
 
 
-    static void broadcast(Message broadcastMessage, DatagramSocket socket ) {
-        List<InetAddress> broadcastList = null;
-
-        try {
-            broadcastList = listAllBroadcastAddresses();
-
-            if (broadcastList != null && broadcastList.size() > 0) {
-                InetAddress address = broadcastList.get(0);
-                socket = new DatagramSocket();
-                socket.setBroadcast(true);
-
-                byte[] buffer = broadcastMessage.toString().getBytes();
-
-                DatagramPacket packet
-                        = new DatagramPacket(buffer, 0, buffer.length, address, 4445);
-
-                socket.send(packet);
-                //   socket.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    static List<InetAddress> listAllBroadcastAddresses() throws SocketException {
-        List<InetAddress> broadcastList = new ArrayList<>();
-        Enumeration<NetworkInterface> interfaces
-                = NetworkInterface.getNetworkInterfaces();
-        while (interfaces.hasMoreElements()) {
-            NetworkInterface networkInterface = interfaces.nextElement();
-
-            if (networkInterface.isLoopback() || !networkInterface.isUp()) {
-                continue;
-            }
-
-            networkInterface.getInterfaceAddresses().stream()
-                    .map(InterfaceAddress::getBroadcast)
-                    .filter(Objects::nonNull)
-                    .forEach(broadcastList::add);
-        }
-        return broadcastList;
-    }
-
-
-
-
-     static String[] interpolate(String[] vals, int f, boolean isRobust) {
-
+    /**
+     * After interpolation success - predicts the value of nodeNumber at the polynomial
+     *
+     * @param vals       - Y values (x values are the indecies)
+     * @param f          - The degree of the polynomial
+     * @param nodeNumber - The x value to predict it's y value
+     * @return - P(nodeNumber)
+     */
+    static double predict(String[] vals, int f, int nodeNumber) {
         double[] y = new double[vals.length];
         for (int i = 0; i < vals.length; i++) {
             y[i] = Double.parseDouble(vals[i]);
         }
-/*        if (mNumber == 1 && confirmValuesThread == null)         // Fuck node 1
-            y[1] += 2.0;*/
-        //        y[y.length-1] = y[y.length-1] *3;
         double[] x = new double[vals.length];
         for (int i = 0; i < x.length; i++) {
             x[i] = i + 1;
         }
-   //     y[0] = 300;
+        PolynomialRegression p = new PolynomialRegression(x, y, f);
+        if (p.R2() == 1.0)
+            return p.predict(nodeNumber);
+        return 0;
+    }
 
-         boolean condition ;
-        if(isRobust){
-            condition = combine(x,y,f+1);
-        }else {
-            condition = (new PolynomialRegression(x, y, f)).R2() == 1.0;
+    /**
+     * This functions tries to interpolate according to the input value even if there are faulty values
+     *
+     * @param vals               - Y values (x values are the indecies)
+     * @param f                  - The degree of the polynomial
+     * @param value              - The x value to predict it's y value
+     * @param numOfCorrectValues - The polynomial must agree with at least this number of values
+     * @return - P(value)
+     */
+    static Double interpolateRobust(String[] vals, int f, int value, int numOfCorrectValues) {
+        ArrayList<Double> yVals = new ArrayList<>();
+        ArrayList<Double> xVals = new ArrayList<>();
+        for (int i = 0; i < vals.length; i++) {
+            try {
+                if (vals[i] != null) {
+                    yVals.add(Double.parseDouble(vals[i]));
+                    xVals.add((double) (i + 1));
+                }
+            } catch (NullPointerException e) {
+                System.out.println("bad value = " + vals[i]);
+            }
         }
-        if (condition) {
+        PolynomialRegression p = combine(xVals, yVals, f + 1, numOfCorrectValues);
+        if (p != null) {
+            return p.predict(value);
+        }
+        return null;
+    }
+
+    /**
+     * Translates string array to double array and then attempts to interpolate the points
+     *
+     * @param vals              - Y values (x values are the indecies)
+     * @param f                 - The degree of the polynomial
+     * @param returnNullIfFails - If true returns null - else put zeros
+     * @return - If the interpolation success - returns the input array, else zeros/null
+     */
+    static String[] interpolate(String[] vals, int f, boolean returnNullIfFails) {
+        double[] y = new double[vals.length];
+        for (int i = 0; i < vals.length; i++) {
+            y[i] = Double.parseDouble(vals[i]);
+        }
+        double[] x = new double[vals.length];
+        for (int i = 0; i < x.length; i++) {
+            x[i] = i + 1;
+        }
+        boolean condition = (new PolynomialRegression(x, y, f)).R2() == 1.0;
+
+        if (!condition) {
+            if (returnNullIfFails)
+                return null;
             for (int i = 0; i < vals.length; i++) {
                 vals[i] = "0";
             }
-            System.out.println("bad polynomial");
-        } else {
-            System.out.println("good polynomial");
         }
         return vals;
     }
 
-    private static boolean combine(double[] arrX,double[] arrY, int r) {
+    private static PolynomialRegression combine(ArrayList<Double> arrX, ArrayList<Double> arrY, int r, int numOfOkPoints) {
         double[] resX = new double[r];
         double[] resY = new double[r];
-        return doCombine(arrX, resX,arrY,resY, 0, 0, r);
+        return doCombine(arrX, resX, arrY, resY, 0, 0, r, numOfOkPoints);
     }
 
-    private static boolean doCombine(double[] arrX, double[] resX,double[] arrY, double[] resY, int currIndex, int level, int r) {
-        if(level == r){
-            return printArray(resX, resY, r);
+    private static PolynomialRegression doCombine(ArrayList<Double> arrX, double[] resX, ArrayList<Double> arrY, double[] resY, int currIndex, int level, int r, int numOfOkPoints) {
+        if (level == r) {
+            return areValuesInterpolate(resX, resY, r, arrX, arrY, numOfOkPoints);
         }
-        for (int i = currIndex; i < arrX.length; i++) {
-            resX[level] = arrX[i];
-            resY[level] = arrY[i];
-            if (doCombine(arrX, resX,arrY,resY, i+1, level+1, r))
-                return true;
+        for (int i = currIndex; i < arrX.size(); i++) {
+            resX[level] = arrX.get(i);
+            resY[level] = arrY.get(i);
+            PolynomialRegression p = doCombine(arrX, resX, arrY, resY, i + 1, level + 1, r, numOfOkPoints);
+            if (p != null)
+                return p;
             //way to avoid printing duplicates
-            if(i < arrX.length-1 && arrX[i] == arrX[i+1]){
+            if (i < arrX.size() - 1 && arrX.get(i).equals(arrX.get(i + 1))) {
                 i++;
             }
         }
-        return false;
+        return null;
     }
 
-    private static boolean printArray(double[] resX, double[] resY, int f) {
-       return (new PolynomialRegression(resX, resY, f).R2() == 1.0);
+    private static PolynomialRegression areValuesInterpolate(double[] resX, double[] resY, int f, ArrayList<Double> arrX, ArrayList<Double> arrY, int numOfOkPoints) {
+        PolynomialRegression p = new PolynomialRegression(resX, resY, f);
+        if (p.R2() == 1.0 && checkCorrectnessOfPolynomial(p, arrX, arrY, numOfOkPoints)) {
+            return p;
+        }
+        return null;
+    }
+
+    private static boolean checkCorrectnessOfPolynomial(PolynomialRegression p, ArrayList<Double> arrX, ArrayList<Double> arrY, int numOfOkPoints) {
+        int counter = 0;
+        for (int i = 0; i < arrX.size(); i++) {
+            if (Math.round(p.predict(arrX.get(i))) == Math.round(arrY.get(i))) {
+                counter++;
+            }
+        }
+        return counter >= numOfOkPoints;
+    }
+
+    /**
+     * Calculates the first prime number that is greater than 15*f
+     *
+     * @return prime number that is greater than 15*f
+     */
+    static int generatePrime(int f) {
+        boolean isPrime = true;
+        int n = (15 * f);
+        do {
+            isPrime = true;
+            n++;
+            for (long factor = 2; factor * factor <= n; factor++) {
+
+                // if factor divides evenly into n, n is not prime, so break out of loop
+                if (n % factor == 0) {
+                    isPrime = false;
+                    break;
+                }
+            }
+        } while (!isPrime);
+        return n;
+    }
+
+
+    /**
+     * Computes the polynomial arr[0]*x^0 + .. + arr[f]*x^f
+     *
+     * @param arr - array of coefficients
+     * @param x   - the value to calculate with
+     * @return - The value of the polynomial in x.
+     */
+    public static long computePolynomial(int[] arr, int x) {
+        long res = 0;
+        for (int i = 0; i < arr.length; i++) {
+            res += arr[i] * Math.pow(x, i);
+        }
+        return res;
+    }
+
+    /**
+     * Randomly creates array of coefficients to simulate a polynomial
+     *
+     * @return - Array of coefficients
+     */
+    public static int[] createArrayOfCoefs(int f, int boundForRandom, Random random) {
+        int[] arr = new int[f + 1];
+        for (int i = 1; i < arr.length; i++) {
+            arr[i] = random.nextInt(boundForRandom);
+            if (arr[i] == 0)
+                arr[i]++;
+        }
+        return arr;
     }
 
 }

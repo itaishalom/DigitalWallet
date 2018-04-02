@@ -5,7 +5,7 @@ package wallet;
  */
 public interface WalletInterface {
 
-    public void store(String key,Object value);
+    public void store(int key,int value);
 
-    public Object retrieve(String key);
+    public int retrieve(int key);
 }
