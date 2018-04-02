@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.Socket;
 
 import static wallet.node.Client.ProccesStatus.FAILED;
+import static wallet.node.Functions.createArrayOfCoefs;
 import static wallet.node.Functions.interpolateRobust;
 import static wallet.node.Message.*;
 
@@ -52,7 +53,7 @@ public class Client extends Dealer {
 * 
 * @param key_tag - The client will try to restore value with key_tag and will success if key_tag=key. 
 */
-    public void startProcess(int key) {
+    public void startProcess(int key_tag) {
         processStatus = ProccesStatus.ACTIVE;
         //     container = new BroadcastReceiverClient();
         if (!broadCastStarted) {
@@ -90,17 +91,20 @@ public class Client extends Dealer {
             e.printStackTrace();
         }
         sendRefresh(RANDOM_VALUES);
-        q[0] = createArrayOfCoefs();
+        q[0] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
         q[0][0] = mRandom.nextInt(boundForRandom);
         ; // decide what to do
-        p[0] = createArrayOfCoefs();
+        p[0] = createArrayOfCoefs(mFaults-1, boundForRandom, mRandom);
 
         p[0][0] = mRandom.nextInt(boundForRandom);
+        if( p[0][0] == 0){
+            p[0][0]++;
+        }
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
             calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, RANDOM_VALUES);
         }
 
-        wait = new waitForProcessEnd(key, KEY_TAG, RANDOM_VALUES, "Sending key' bi-polynomial");
+        wait = new waitForProcessEnd(key_tag, KEY_TAG, RANDOM_VALUES, "Sending key' bi-polynomial");
         wait.start();
     }
 

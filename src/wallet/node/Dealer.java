@@ -2,6 +2,8 @@ package wallet.node;
 
 import java.util.Random;
 
+import static wallet.node.Functions.computePolynomial;
+import static wallet.node.Functions.createArrayOfCoefs;
 import static wallet.node.Functions.generatePrime;
 import static wallet.node.Message.*;
 
@@ -13,8 +15,8 @@ public class Dealer extends Node {
     int boundForRandom;
     int[][] q;
     int[][] p;
-     boolean[][] okCounter;
-     Thread[] waitForOks;
+    boolean[][] okCounter;
+    Thread[] waitForOks;
     Thread broadcastReceiver;
     BroadcastReceiver container;
     private boolean isDealerReceiver = true;
@@ -45,17 +47,16 @@ public class Dealer extends Node {
     }
 
 
-
     public void startProcess(int key, int value) {
         if (!isDealerReceiver)
             startBroadcastReceiver();
-     //   refresh(KEY);
+        //   refresh(KEY);
         sendRefresh(KEY);
 
         System.out.println("#############  Begin store key #############");
-        q[KEY] = createArrayOfCoefs();
+        q[KEY] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
         q[KEY][0] = key; // decide what to do
-        p[KEY] = createArrayOfCoefs();
+        p[KEY] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
         p[KEY][0] = 1;
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
             calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, KEY);
@@ -93,12 +94,12 @@ public class Dealer extends Node {
                     return;
                 }
             }
-        //    refresh(mProcess);
+            //    refresh(mProcess);
             sendRefresh(mProcess);
             System.out.println("############# " + mInfo + "  #############");
-            q[VALUE] = createArrayOfCoefs();
+            q[VALUE] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
             q[VALUE][0] = mValue; // decide what to do
-            p[VALUE] = createArrayOfCoefs();
+            p[VALUE] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
             p[VALUE][0] = 1;
             for (Node node_i : mAllNodes) {  // Iterate over all Nodes
                 calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), VALUE, mProcess);
@@ -175,9 +176,14 @@ public class Dealer extends Node {
                         mOkNumber[msg.getProcessType()]++;
                         okCounter[msg.getProcessType()][msg.getmFrom() - 1] = true;
                         if (waitForOks[msg.getProcessType()] == null) {
-                            print("wait for ok starting for process " + getProcessFromNumber(msg.getProcessType()));
-                            waitForOks[msg.getProcessType()] = new WaitForOkDealer(msg.getProcessType());
-                            waitForOks[msg.getProcessType()].start();
+                            synchronized (this) {
+                                if (waitForOks[msg.getProcessType()] == null) {
+                                    print("wait for ok starting for process " + getProcessFromNumber(msg.getProcessType()));
+                                    waitForOks[msg.getProcessType()] = new WaitForOkDealer(msg.getProcessType());
+                                    if (!((WaitForOkDealer) waitForOks[msg.getProcessType()]).isRunning())
+                                        waitForOks[msg.getProcessType()].start();
+                                }
+                            }
                         }
                         break;
                     }
@@ -207,14 +213,20 @@ public class Dealer extends Node {
     }
 
     public class WaitForOkDealer extends WaitForOk {
+        boolean running = false;
 
         public WaitForOkDealer(int processType) {
             super(processType, 0);
-            attemptNumbers=0;
+            attemptNumbers = 0;
+        }
+
+        public boolean isRunning() {
+            return running;
         }
 
         @Override
         public void run() {
+            running = true;
             try {
                 attemptNumbers++;
                 int counter = 0;
@@ -277,34 +289,6 @@ public class Dealer extends Node {
             else
                 response.append(val1 * val2).append(",");
         }
-    }
-
-    /**
-     * Computes the polynomial arr[0]*x^0 + .. + arr[f]*x^f
-     *
-     * @param arr - array of coefficients
-     * @param x   - the value to calculate with
-     * @return - The value of the polynomial in x.
-     */
-    protected long computePolynomial(int[] arr, int x) {
-        long res = 0;
-        for (int i = 0; i < arr.length; i++) {
-            res += arr[i] * Math.pow(x, i);
-        }
-        return res;
-    }
-
-    /**
-     * Randomly creates array of coefficients to simulate a polynomial
-     *
-     * @return - Array of coefficients
-     */
-    protected int[] createArrayOfCoefs() {
-        int[] arr = new int[mFaults + 1];
-        for (int i = 1; i < arr.length; i++) {
-            arr[i] = mRandom.nextInt(boundForRandom);
-        }
-        return arr;
     }
 
 

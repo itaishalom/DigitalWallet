@@ -3,6 +3,7 @@ package wallet.node;
 import wallet.PolynomialRegression;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 /**
  * Created by Itai on 10/03/2018.
@@ -12,8 +13,9 @@ public class Functions {
 
     /**
      * After interpolation success - predicts the value of nodeNumber at the polynomial
-     * @param vals - Y values (x values are the indecies)
-     * @param f - The degree of the polynomial
+     *
+     * @param vals       - Y values (x values are the indecies)
+     * @param f          - The degree of the polynomial
      * @param nodeNumber - The x value to predict it's y value
      * @return - P(nodeNumber)
      */
@@ -34,9 +36,10 @@ public class Functions {
 
     /**
      * This functions tries to interpolate according to the input value even if there are faulty values
-     * @param vals - Y values (x values are the indecies)
-     * @param f - The degree of the polynomial
-     * @param value - The x value to predict it's y value
+     *
+     * @param vals               - Y values (x values are the indecies)
+     * @param f                  - The degree of the polynomial
+     * @param value              - The x value to predict it's y value
      * @param numOfCorrectValues - The polynomial must agree with at least this number of values
      * @return - P(value)
      */
@@ -45,7 +48,7 @@ public class Functions {
         ArrayList<Double> xVals = new ArrayList<>();
         for (int i = 0; i < vals.length; i++) {
             try {
-                if (vals[i] != null && !vals[i].equals("0")) {
+                if (vals[i] != null) {
                     yVals.add(Double.parseDouble(vals[i]));
                     xVals.add((double) (i + 1));
                 }
@@ -53,7 +56,7 @@ public class Functions {
                 System.out.println("bad value = " + vals[i]);
             }
         }
-        PolynomialRegression p = combine(xVals, yVals, f + 1, numOfCorrectValues );
+        PolynomialRegression p = combine(xVals, yVals, f + 1, numOfCorrectValues);
         if (p != null) {
             return p.predict(value);
         }
@@ -62,12 +65,13 @@ public class Functions {
 
     /**
      * Translates string array to double array and then attempts to interpolate the points
-     * @param vals - Y values (x values are the indecies)
-     * @param f - The degree of the polynomial
+     *
+     * @param vals              - Y values (x values are the indecies)
+     * @param f                 - The degree of the polynomial
      * @param returnNullIfFails - If true returns null - else put zeros
      * @return - If the interpolation success - returns the input array, else zeros/null
      */
-    static String[] interpolate(String[] vals, int f,  boolean returnNullIfFails) {
+    static String[] interpolate(String[] vals, int f, boolean returnNullIfFails) {
         double[] y = new double[vals.length];
         for (int i = 0; i < vals.length; i++) {
             y[i] = Double.parseDouble(vals[i]);
@@ -96,7 +100,7 @@ public class Functions {
 
     private static PolynomialRegression doCombine(ArrayList<Double> arrX, double[] resX, ArrayList<Double> arrY, double[] resY, int currIndex, int level, int r, int numOfOkPoints) {
         if (level == r) {
-            return areValuesInterpolate(resX, resY, r, arrX, arrY,numOfOkPoints);
+            return areValuesInterpolate(resX, resY, r, arrX, arrY, numOfOkPoints);
         }
         for (int i = currIndex; i < arrX.size(); i++) {
             resX[level] = arrX.get(i);
@@ -151,6 +155,37 @@ public class Functions {
             }
         } while (!isPrime);
         return n;
+    }
+
+
+    /**
+     * Computes the polynomial arr[0]*x^0 + .. + arr[f]*x^f
+     *
+     * @param arr - array of coefficients
+     * @param x   - the value to calculate with
+     * @return - The value of the polynomial in x.
+     */
+    public static long computePolynomial(int[] arr, int x) {
+        long res = 0;
+        for (int i = 0; i < arr.length; i++) {
+            res += arr[i] * Math.pow(x, i);
+        }
+        return res;
+    }
+
+    /**
+     * Randomly creates array of coefficients to simulate a polynomial
+     *
+     * @return - Array of coefficients
+     */
+    public static int[] createArrayOfCoefs(int f, int boundForRandom, Random random) {
+        int[] arr = new int[f + 1];
+        for (int i = 1; i < arr.length; i++) {
+            arr[i] = random.nextInt(boundForRandom);
+            if (arr[i] == 0)
+                arr[i]++;
+        }
+        return arr;
     }
 
 }

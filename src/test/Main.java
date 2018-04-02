@@ -17,10 +17,11 @@ public class Main {
         System.out.println("###########  value: Storing (" + key + "," + value + ") ##############");
         myWallet.store(key, value);
 
-        testBadValue(1, key, value, myWallet);
-        System.out.println("###########  Node 1: will be corrupted now ##############");
-        RUN_FAULT_NODE = true;
         testGoodValue(2, key, value, myWallet);
+
+        testBadValue(1, key, value, myWallet);
+
+
         testBadValue(3, key, value, myWallet);
 
         testGoodValue(4, key, value, myWallet);
@@ -44,8 +45,11 @@ public class Main {
 
 
     private static void testGoodValue(int testNum, int key, int value, Wallet myWallet) {
+        System.out.println("###########  Node 1: will be corrupted now ##############");
+        RUN_FAULT_NODE = true;
         System.out.println("Test " + testNum + " : ######### Reconstruct value: Try to get with key " + key + " ##############");
         int shouldBeValue = myWallet.retrieve(key);
+
         if (shouldBeValue == value) {
             System.out.println("######### OK ##############");
         } else {
