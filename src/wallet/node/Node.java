@@ -128,12 +128,9 @@ public class Node {
      * Calculate G value and broadcast it
      */
     private void calculateG() {
-        if(mNumber ==1){
-            System.out.println("here");
-        }
-        long key = Math.round(Functions.predict(values2[KEY], mFaults, 0));
-        long key2 = Math.round(Functions.predict(values2[KEY_TAG], mFaults, 0));
-        long randPloy = Math.round(Functions.predict(values2[RANDOM_VALUES], mFaults, 0));
+        long key = Math.round(Functions.predict(values1[KEY], mFaults, 0));
+        long key2 = Math.round(Functions.predict(values1[KEY_TAG], mFaults, 0));
+        long randPloy = Math.round(Functions.predict(values1[RANDOM_VALUES], mFaults-1, 0));
         long g_value = randPloy * (key - key2);
         g_values[mNumber - 1] = String.valueOf(g_value);
         numOfGValues++;
@@ -398,7 +395,7 @@ public class Node {
                 }
             }
 
-            Double res = interpolateRobust(g_values, (2 * mFaults), 0, mNumberOfValues - mFaults);
+            Double res = interpolateRobust(g_values, (2 * mFaults)-1, 0, mNumberOfValues - mFaults);
             if (res == null) {
                 print("Node " + mNumber + " failed to reconstruct G polynomial");
                 return;
@@ -491,7 +488,7 @@ public class Node {
 
     public void print(String s) {
         //    if (mNumber == 1)
-          System.out.println("this: " + this.mNumber + ": " + s);
+     //    System.out.println("this: " + this.mNumber + ": " + s);
     }
 
     public class WaitForOk extends Thread {

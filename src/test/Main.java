@@ -17,16 +17,44 @@ public class Main {
         System.out.println("###########  value: Storing (" + key + "," + value + ") ##############");
         myWallet.store(key, value);
 
-        testGoodValue(2, key, value, myWallet);
 
+        while(myWallet.isRunning()){
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("#############Testing with all nodes good ################");
+
+        testGoodValue(2, key, value, myWallet);
         testBadValue(1, key, value, myWallet);
 
+        while(myWallet.isRunning()){
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("###########  Node 1: will be corrupted now ##############");
+        RUN_FAULT_NODE = true;
 
         testBadValue(3, key, value, myWallet);
 
         testGoodValue(4, key, value, myWallet);
-        RUN_FAULT_NODE = false;
+
+        while(myWallet.isRunning()){
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         System.out.println("###########  Node 1: will be OK ##############");
+        RUN_FAULT_NODE = false;
+
+
         testBadValue(5, key, value, myWallet);
         testGoodValue(6, key, value, myWallet);
 
@@ -45,8 +73,7 @@ public class Main {
 
 
     private static void testGoodValue(int testNum, int key, int value, Wallet myWallet) {
-        System.out.println("###########  Node 1: will be corrupted now ##############");
-        RUN_FAULT_NODE = true;
+
         System.out.println("Test " + testNum + " : ######### Reconstruct value: Try to get with key " + key + " ##############");
         int shouldBeValue = myWallet.retrieve(key);
 
@@ -56,5 +83,4 @@ public class Main {
             System.err.println("######### BAD RESULT - retrieve(" + key + ") = " + shouldBeValue + " ##############");
         }
     }
-
 }

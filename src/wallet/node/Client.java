@@ -91,8 +91,11 @@ public class Client extends Dealer {
             e.printStackTrace();
         }
         sendRefresh(RANDOM_VALUES);
-        q[0] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
+        q[0] = createArrayOfCoefs(mFaults-1, boundForRandom, mRandom);
         q[0][0] = mRandom.nextInt(boundForRandom);
+        if( q[0][0] == 0){
+            q[0][0]++;
+        }
         ; // decide what to do
         p[0] = createArrayOfCoefs(mFaults-1, boundForRandom, mRandom);
 

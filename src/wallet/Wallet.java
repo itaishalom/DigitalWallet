@@ -36,6 +36,13 @@ public class Wallet implements WalletInterface {
 
     }
 
+    public boolean isRunning() {
+        if(dealer !=null ){
+            return (!(dealer.isStoreDone()));
+        }
+        return client != null && client.processStatus == Client.ProccesStatus.ACTIVE;
+    }
+
     @Override
     public void store(int key, int value) {
         if(client !=null){
