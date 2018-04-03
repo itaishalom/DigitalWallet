@@ -36,7 +36,6 @@ public class Node {
     NetworkCommunication communication;
     int mNumberOfValues;
     boolean[] ProtocolDone;
-    private String[] g_values;
     private int numOfGValues;
     private int mClientPort;
     private Thread waitForGsThread;
@@ -66,7 +65,6 @@ public class Node {
         mFaults = faultsNumber;
         mNumberOfValues = (mFaults * 3) + 1;
         communication = new NetworkCommunication();
-        g_values = new String[mNumberOfValues];
         numOfGValues = 0;
     }
 
@@ -82,7 +80,7 @@ public class Node {
         values1[process] = null;
         values2[process] = null;
 
-        numOfGValues = 0;
+
 
         try {
             if (confirmValuesThread[process] != null)
@@ -107,7 +105,6 @@ public class Node {
         mIOk[process] = false;
         mCompareNumbers[process] = 0;
         if (process == KEY_TAG) {
-            g_values = new String[mNumberOfValues];
             numOfGValues = 0;
         }
         isGCaluculated = false;
@@ -160,7 +157,7 @@ public class Node {
 //        numOfGValues++;
 //        String info = String.valueOf(g_value);
 //        Message msg = new Message(mNumber, KEY_TAG, BROADCAST, G_VALUES, info);
-
+        numOfGValues++;
         isGCaluculated = true;
         String info = info1.substring(0, info1.length() - 1) + ";" + info2.substring(0, info2.length() - 1);
         Message msg = new Message(mNumber, G_THIS_VALUES, BROADCAST, G_VALUES, info);
@@ -349,10 +346,10 @@ public class Node {
             case G_VALUES: {
 //                g_values[msg.getmFrom() - 1] = msg.getmInfo();
 //                numOfGValues++;
-
+                numOfGValues++;
                 while(!isGCaluculated){
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(300);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -360,7 +357,7 @@ public class Node {
                 int nodeNum = msg.getmFrom() - 1;
                 String[] temp = msg.getmInfo().split(";");
                 String[] values1 = temp[0].split(","), values2 = temp[1].split(",");
-                numOfGValues++;
+
                 for (int i = 0; i < mNumberOfValues; i++) {
                     if (gValuesTable[i][nodeNum].equals(""))
                         gValuesTable[i][nodeNum] = values1[i];
@@ -442,7 +439,7 @@ public class Node {
                     return;
                 }
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(3000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -545,7 +542,7 @@ public class Node {
 
     public void print(String s) {
         //    if (mNumber == 1)
-        System.out.println("this: " + this.mNumber + ": " + s);
+   //     System.out.println("this: " + this.mNumber + ": " + s);
     }
 
     public class WaitForOk extends Thread {

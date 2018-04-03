@@ -27,8 +27,8 @@ public class Main {
         }
         System.out.println("#############Testing with all nodes good ################");
 
-        testGoodValue(2, key, value, myWallet);
-        testBadValue(1, key, value, myWallet);
+        testGoodValue(1, key, value, myWallet);
+        testBadValue(2, key, value, myWallet);
 
         while(myWallet.isRunning()){
             try {
@@ -62,6 +62,9 @@ public class Main {
 
     private static void testBadValue(int testNum, int key, int value, Wallet myWallet) {
         int badKey = rand.nextInt(100);
+        while(badKey == key){
+            badKey = rand.nextInt(100);
+        }
         System.out.println("Test " + testNum + " : ######### Reconstruct value: Try to get with BAD key " + badKey + " ##############");
         int badValue = myWallet.retrieve(badKey);
         if (badValue == value) {

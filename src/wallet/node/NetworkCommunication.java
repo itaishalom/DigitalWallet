@@ -65,7 +65,7 @@ public class NetworkCommunication {
 
      void broadcast(Message broadcastMessage, DatagramSocket socket) {
         List<InetAddress> broadcastList = null;
-          //   System.out.println("Broadcast: " + broadcastMessage);
+      //     System.out.println("Broadcast: " + broadcastMessage);
         try {
             broadcastList = listAllBroadcastAddresses();
 
