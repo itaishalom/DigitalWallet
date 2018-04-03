@@ -38,7 +38,7 @@ public class Node {
     private String[] g_values;
     private int numOfGValues;
     private int mClientPort;
-    private Thread waitForGsTread;
+    private Thread waitForGsThread;
 
     private String[][] gValuesTable;
 
@@ -88,9 +88,9 @@ public class Node {
             if (waitForOks[process] != null)
                 waitForOks[process].join();
 
-            if (waitForGsTread != null) {
-                waitForGsTread.join();
-                waitForGsTread = null;
+            if (waitForGsThread != null) {
+                waitForGsThread.join();
+                waitForGsThread = null;
             }
 
         } catch (InterruptedException e) {
@@ -359,9 +359,9 @@ public class Node {
                     else if(!gValuesTable[j][i].equals(values2[j]))
                         gValuesTable[j][i] = "";
                 }
-                if (waitForGsTread == null) { //starts a new thread
-                    waitForGsTread = new WaitForGsToCalculateInZero();
-                    waitForGsTread.start();
+                if (waitForGsThread == null) { //starts a new thread
+                    waitForGsThread = new WaitForGsToCalculateInZero();
+                    waitForGsThread.start();
                 }
             }
             break;
