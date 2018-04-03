@@ -40,6 +40,8 @@ public class Node {
     private int mClientPort;
     private Thread waitForGsTread;
 
+    private String[][] gValuesTable;
+
     public Node(int num, int port, int faultsNumber, int clientPort) {
         mClientPort = clientPort;
         haveIFinished = new boolean[TOTAL_PROCESS_VALUES];
@@ -128,14 +130,35 @@ public class Node {
      * Calculate G value and broadcast it
      */
     private void calculateG() {
-        long key = Math.round(Functions.predict(values1[KEY], mFaults, 0));
-        long key2 = Math.round(Functions.predict(values1[KEY_TAG], mFaults, 0));
-        long randPloy = Math.round(Functions.predict(values1[RANDOM_VALUES], mFaults-1, 0));
-        long g_value = randPloy * (key - key2);
-        g_values[mNumber - 1] = String.valueOf(g_value);
-        numOfGValues++;
-        String info = String.valueOf(g_value);
-        Message msg = new Message(mNumber, KEY_TAG, BROADCAST, G_VALUES, info);
+//        long key = Math.round(Functions.predict(values1[KEY], mFaults, 0));
+//        long key2 = Math.round(Functions.predict(values1[KEY_TAG], mFaults, 0));
+//        long randPloy = Math.round(Functions.predict(values1[RANDOM_VALUES], mFaults-1, 0));
+//        long g_value = randPloy * (key - key2);
+
+//        long[] Gvalues1 = new long[mNumberOfValues], Gvalues2 = new long[mNumberOfValues];
+        gValuesTable = new String[mNumberOfValues][mNumberOfValues];
+        for(int i=0; i<mNumberOfValues; i++)
+            for(int j=0; j<mNumberOfValues; j++)
+                gValuesTable[i][j] = "";
+        String info1 = "", info2 = "";
+        for(int i=0; i<mNumberOfValues; i++)
+        {
+            int v1 = (Integer.valueOf(values1[KEY][i])-Integer.valueOf(values1[KEY_TAG][i]))
+                    *Integer.valueOf(values1[RANDOM_VALUES][i]);
+            int v2 = (Integer.valueOf(values2[KEY][i])-Integer.valueOf(values2[KEY_TAG][i]))
+                    *Integer.valueOf(values2[RANDOM_VALUES][i]);
+            gValuesTable[i][mNumber] = String.valueOf(v1);
+            gValuesTable[mNumber][i] = String.valueOf(v2);
+            info1 += String.valueOf(v1) + ",";
+            info2 += String.valueOf(v2) + ",";
+        }
+//        g_values[mNumber - 1] = String.valueOf(g_value);
+//        numOfGValues++;
+//        String info = String.valueOf(g_value);
+//        Message msg = new Message(mNumber, KEY_TAG, BROADCAST, G_VALUES, info);
+
+        String info = info1.substring(0,info1.length()-1) + ";" + info2.substring(0,info2.length()-1);
+        Message msg = new Message(mNumber, G_THIS_VALUES, BROADCAST, G_VALUES, info);
         communication.broadcast(msg,broadCasterSocket);
     }
 
@@ -318,8 +341,24 @@ public class Node {
                 break;
             }
             case G_VALUES: {
-                g_values[msg.getmFrom() - 1] = msg.getmInfo();
-                numOfGValues++;
+//                g_values[msg.getmFrom() - 1] = msg.getmInfo();
+//                numOfGValues++;
+
+                int i = msg.getmFrom();
+                String[] temp = msg.getmInfo().split(";");
+                String[] values1 = temp[0].split(","), values2 = temp[1].split(",");
+                for(int j=0; j<mNumberOfValues; j++)
+                {
+                    if(gValuesTable[i][j].equals(""))
+                        gValuesTable[i][j] = values1[j];
+                    else if(!gValuesTable[i][j].equals(values1[j]))
+                        gValuesTable[i][j] = "";
+
+                    if(gValuesTable[j][i].equals(""))
+                        gValuesTable[j][i] = values2[j];
+                    else if(!gValuesTable[j][i].equals(values2[j]))
+                        gValuesTable[j][i] = "";
+                }
                 if (waitForGsTread == null) { //starts a new thread
                     waitForGsTread = new WaitForGsToCalculateInZero();
                     waitForGsTread.start();

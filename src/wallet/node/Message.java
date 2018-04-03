@@ -25,7 +25,8 @@ public class Message {
     public static final int VALUE = 1;
     public static final int RANDOM_VALUES = 2;  //Done
     public static final int KEY_TAG = 3;
-    public static final int TOTAL_PROCESS_VALUES = 4;
+    public static final int G_THIS_VALUES = 4;  //added by daniel on 3/4
+    public static final int TOTAL_PROCESS_VALUES = 5;
 
 
     public static String getProcessFromNumber(int num) {
