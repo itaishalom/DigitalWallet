@@ -344,20 +344,21 @@ public class Node {
 //                g_values[msg.getmFrom() - 1] = msg.getmInfo();
 //                numOfGValues++;
 
-                int i = msg.getmFrom();
+                int nodeNum = msg.getmFrom();
                 String[] temp = msg.getmInfo().split(";");
                 String[] values1 = temp[0].split(","), values2 = temp[1].split(",");
-                for(int j=0; j<mNumberOfValues; j++)
+                numOfGValues++;
+                for(int i=0; i<mNumberOfValues; i++)
                 {
-                    if(gValuesTable[i][j].equals(""))
-                        gValuesTable[i][j] = values1[j];
-                    else if(!gValuesTable[i][j].equals(values1[j]))
-                        gValuesTable[i][j] = "";
+                    if(gValuesTable[i][nodeNum].equals(""))
+                        gValuesTable[i][nodeNum] = values1[i];
+                    else if(!gValuesTable[i][nodeNum].equals(values1[i]))
+                        gValuesTable[i][nodeNum] = "";
 
-                    if(gValuesTable[j][i].equals(""))
-                        gValuesTable[j][i] = values2[j];
-                    else if(!gValuesTable[j][i].equals(values2[j]))
-                        gValuesTable[j][i] = "";
+                    if(gValuesTable[nodeNum][i].equals(""))
+                        gValuesTable[nodeNum][i] = values2[i];
+                    else if(!gValuesTable[nodeNum][i].equals(values2[i]))
+                        gValuesTable[nodeNum][i] = "";
                 }
                 if (waitForGsThread == null) { //starts a new thread
                     waitForGsThread = new WaitForGsToCalculateInZero();
@@ -434,7 +435,11 @@ public class Node {
                 }
             }
 
-            Double res = interpolateRobust(g_values, (2 * mFaults)-1, 0, mNumberOfValues - mFaults);
+            String[] reducedG = new String[mNumberOfValues];
+            for(int i=0;i<mNumberOfValues;i++)
+                reducedG[i] = String.valueOf(interpolateRobust(gValuesTable[i], (2 * mFaults)-1, 0, mNumberOfValues - mFaults));
+            Double res = interpolateRobust(reducedG, (2 * mFaults)-1, 0, mNumberOfValues - mFaults);
+//            Double res = interpolateRobust(g_values, (2 * mFaults)-1, 0, mNumberOfValues - mFaults);
             if (res == null) {
                 print("Node " + mNumber + " failed to reconstruct G polynomial");
                 return;
