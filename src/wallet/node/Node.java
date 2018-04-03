@@ -17,7 +17,7 @@ import static wallet.node.Message.*;
 public class Node {
     private int mPortInput;
     int mNumber;
-    //  static DatagramSocket broadCasterSocket = null;
+    static DatagramSocket broadCasterSocket = null;
     Node[] mAllNodes;
     int[] mOkNumber;
     private int[] mOk2Number;
@@ -136,7 +136,7 @@ public class Node {
         numOfGValues++;
         String info = String.valueOf(g_value);
         Message msg = new Message(mNumber, KEY_TAG, BROADCAST, G_VALUES, info);
-        communication.broadcast(msg);
+        communication.broadcast(msg,broadCasterSocket);
     }
 
     public void setNodes(Node[] nodes) {
@@ -232,7 +232,7 @@ public class Node {
                     printResults(msg.getProcessType(), 1);
                     ProtocolDone[msg.getProcessType()] = true;
                     Message notifyEnd = new Message(mNumber, msg.getProcessType(), BROADCAST, PROTOCOL_COMPLETE, "1");
-                    communication.broadcast(notifyEnd);
+                    communication.broadcast(notifyEnd,broadCasterSocket);
                     if (msg.getProcessType() == KEY_TAG)
                         calculateG();
                 }
@@ -298,7 +298,7 @@ public class Node {
                             }
                             if (isInterpolateGood) {
                                 Message ok2Broadcast = new Message(mNumber, msg.getProcessType(), BROADCAST, OK2, "done");
-                                communication.broadcast(ok2Broadcast);
+                                communication.broadcast(ok2Broadcast,broadCasterSocket);
                                 try {
 
                                     waitForOks[msg.getProcessType()].join();
@@ -477,7 +477,7 @@ public class Node {
             if (!mIOk[mProcessType]) {
                 Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
                 mIOk[msg.getProcessType()] = true;
-                communication.broadcast(msg);
+                communication.broadcast(msg,broadCasterSocket);
 
                 waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 1);
                 waitForOks[msg.getProcessType()].start();
@@ -488,7 +488,7 @@ public class Node {
 
     public void print(String s) {
         //    if (mNumber == 1)
-     //    System.out.println("this: " + this.mNumber + ": " + s);
+         System.out.println("this: " + this.mNumber + ": " + s);
     }
 
     public class WaitForOk extends Thread {
@@ -543,7 +543,7 @@ public class Node {
                 haveIFinished[okProcNumber] = true;
                 ProtocolDone[okProcNumber] = true;
                 Message notifyEnd = new Message(mNumber, okProcNumber, BROADCAST, PROTOCOL_COMPLETE, String.valueOf(okRound));
-                communication.broadcast(notifyEnd);
+                communication.broadcast(notifyEnd,broadCasterSocket);
                 if (okProcNumber == KEY_TAG)
                     calculateG();
                 // System.out.println(Arrays.toString(values1[mProcessType]));
@@ -637,7 +637,7 @@ public class Node {
 
                 Message msg = new Message(mNumber, compareMsg.getProcessType(), BROADCAST, COMPLAINT, mNumber + "|" + from);
                 print("I am " + mNumber + " And I send broadcast");
-                communication.broadcast(msg);
+                communication.broadcast(msg,broadCasterSocket);
 
             }
         }

@@ -38,7 +38,7 @@ public class Dealer extends Node {
 
     protected void sendRefresh(int process) {
         Message msg = new Message(mNumber, process, BROADCAST, REFRESH, REFRESH);
-        communication.broadcast(msg);
+        communication.broadcast(msg,broadCasterSocket);
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
@@ -169,7 +169,7 @@ public class Dealer extends Node {
                         long result1 = computePolynomial(getQValue(msg.getProcessType()), i) * computePolynomial(getPValue(msg.getProcessType()), j);
                         long result2 = computePolynomial(getPValue(msg.getProcessType()), i) * computePolynomial(getQValue(msg.getProcessType()), j);
                         Message newMsg = new Message(mNumber, msg.getProcessType(), BROADCAST, COMPLAINT_ANSWER, +i + "," + j + "|" + result1 + "," + result2);
-                        communication.broadcast(newMsg);
+                        communication.broadcast(newMsg,broadCasterSocket);
                         break;
                     }
                     case OK: {
@@ -249,7 +249,7 @@ public class Dealer extends Node {
                             String answer = buildInitialValues(i + 1, getQValue(okProcNumber), getPValue(okProcNumber));
                             mComplaintResponseNumber[okProcNumber]++;
                             Message msg = new Message(mNumber, okProcNumber, BROADCAST, NO_OK_ANSWER, (i + 1) + "|" + answer);
-                            communication.broadcast(msg);
+                            communication.broadcast(msg,broadCasterSocket);
                             isProtocolDone = false;
                         } catch (Exception e) {
                             e.printStackTrace();
