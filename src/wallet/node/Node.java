@@ -15,6 +15,7 @@ import static wallet.node.Message.*;
  * @author itaishalom
  */
 public class Node {
+    private boolean isGCaluculated = false;
     private int mPortInput;
     int mNumber;
     static DatagramSocket broadCasterSocket = null;
@@ -71,6 +72,7 @@ public class Node {
 
     /**
      * Refreshing all values for this Process
+     *
      * @param process - Process number
      */
     protected void refresh(int process) {
@@ -108,10 +110,12 @@ public class Node {
             g_values = new String[mNumberOfValues];
             numOfGValues = 0;
         }
+        isGCaluculated = false;
     }
 
     /**
      * Getter for port
+     *
      * @return - This node's port
      */
     int getPort() {
@@ -130,6 +134,7 @@ public class Node {
      * Calculate G value and broadcast it
      */
     private void calculateG() {
+        isGCaluculated = false;
 //        long key = Math.round(Functions.predict(values1[KEY], mFaults, 0));
 //        long key2 = Math.round(Functions.predict(values1[KEY_TAG], mFaults, 0));
 //        long randPloy = Math.round(Functions.predict(values1[RANDOM_VALUES], mFaults-1, 0));
@@ -137,16 +142,15 @@ public class Node {
 
 //        long[] Gvalues1 = new long[mNumberOfValues], Gvalues2 = new long[mNumberOfValues];
         gValuesTable = new String[mNumberOfValues][mNumberOfValues];
-        for(int i=0; i<mNumberOfValues; i++)
-            for(int j=0; j<mNumberOfValues; j++)
+        for (int i = 0; i < mNumberOfValues; i++)
+            for (int j = 0; j < mNumberOfValues; j++)
                 gValuesTable[i][j] = "";
         String info1 = "", info2 = "";
-        for(int i=0; i<mNumberOfValues; i++)
-        {
-            int v1 = (Integer.valueOf(values1[KEY][i])-Integer.valueOf(values1[KEY_TAG][i]))
-                    *Integer.valueOf(values1[RANDOM_VALUES][i]);
-            int v2 = (Integer.valueOf(values2[KEY][i])-Integer.valueOf(values2[KEY_TAG][i]))
-                    *Integer.valueOf(values2[RANDOM_VALUES][i]);
+        for (int i = 0; i < mNumberOfValues; i++) {
+            int v1 = (Integer.valueOf(values1[KEY][i]) - Integer.valueOf(values1[KEY_TAG][i]))
+                    * Integer.valueOf(values1[RANDOM_VALUES][i]);
+            int v2 = (Integer.valueOf(values2[KEY][i]) - Integer.valueOf(values2[KEY_TAG][i]))
+                    * Integer.valueOf(values2[RANDOM_VALUES][i]);
             gValuesTable[i][mNumber] = String.valueOf(v1);
             gValuesTable[mNumber][i] = String.valueOf(v2);
             info1 += String.valueOf(v1) + ",";
@@ -157,9 +161,10 @@ public class Node {
 //        String info = String.valueOf(g_value);
 //        Message msg = new Message(mNumber, KEY_TAG, BROADCAST, G_VALUES, info);
 
-        String info = info1.substring(0,info1.length()-1) + ";" + info2.substring(0,info2.length()-1);
+        isGCaluculated = true;
+        String info = info1.substring(0, info1.length() - 1) + ";" + info2.substring(0, info2.length() - 1);
         Message msg = new Message(mNumber, G_THIS_VALUES, BROADCAST, G_VALUES, info);
-        communication.broadcast(msg,broadCasterSocket);
+        communication.broadcast(msg, broadCasterSocket);
     }
 
     public void setNodes(Node[] nodes) {
@@ -217,32 +222,33 @@ public class Node {
 
     /**
      * Handles incoming message - weather it's a broadcast or private
+     *
      * @param msg - Incoming message to handle
      */
     private void incomeMessageHandler(Message msg) {
         switch (msg.getmSubType()) {
             case INITIAL_VALUES: {
-                    try {
-                        Thread.sleep(3000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    handleInitialValues(msg);
-                    break;
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-                case COMPARE: {
-                    mCompareNumbers[msg.getProcessType()]++;
-                    handleCompares(msg);
-                    if (confirmValuesThread[msg.getProcessType()] == null) {
-                        synchronized (this) {
-                            if (confirmValuesThread[msg.getProcessType()] == null) {
-                                confirmValuesThread[msg.getProcessType()] = new ConfirmValues(msg.getProcessType());
-                                confirmValuesThread[msg.getProcessType()].start();
-                            }
+                handleInitialValues(msg);
+                break;
+            }
+            case COMPARE: {
+                mCompareNumbers[msg.getProcessType()]++;
+                handleCompares(msg);
+                if (confirmValuesThread[msg.getProcessType()] == null) {
+                    synchronized (this) {
+                        if (confirmValuesThread[msg.getProcessType()] == null) {
+                            confirmValuesThread[msg.getProcessType()] = new ConfirmValues(msg.getProcessType());
+                            confirmValuesThread[msg.getProcessType()].start();
                         }
                     }
                 }
-                break;
+            }
+            break;
             case COMPLAINT: {
                 mComplaintNumber[msg.getProcessType()]++;
                 break;
@@ -255,7 +261,7 @@ public class Node {
                     printResults(msg.getProcessType(), 1);
                     ProtocolDone[msg.getProcessType()] = true;
                     Message notifyEnd = new Message(mNumber, msg.getProcessType(), BROADCAST, PROTOCOL_COMPLETE, "1");
-                    communication.broadcast(notifyEnd,broadCasterSocket);
+                    communication.broadcast(notifyEnd, broadCasterSocket);
                     if (msg.getProcessType() == KEY_TAG)
                         calculateG();
                 }
@@ -321,7 +327,7 @@ public class Node {
                             }
                             if (isInterpolateGood) {
                                 Message ok2Broadcast = new Message(mNumber, msg.getProcessType(), BROADCAST, OK2, "done");
-                                communication.broadcast(ok2Broadcast,broadCasterSocket);
+                                communication.broadcast(ok2Broadcast, broadCasterSocket);
                                 try {
 
                                     waitForOks[msg.getProcessType()].join();
@@ -344,20 +350,26 @@ public class Node {
 //                g_values[msg.getmFrom() - 1] = msg.getmInfo();
 //                numOfGValues++;
 
+                while(!isGCaluculated){
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
                 int nodeNum = msg.getmFrom();
                 String[] temp = msg.getmInfo().split(";");
                 String[] values1 = temp[0].split(","), values2 = temp[1].split(",");
                 numOfGValues++;
-                for(int i=0; i<mNumberOfValues; i++)
-                {
-                    if(gValuesTable[i][nodeNum].equals(""))
+                for (int i = 0; i < mNumberOfValues; i++) {
+                    if (gValuesTable[i][nodeNum].equals(""))
                         gValuesTable[i][nodeNum] = values1[i];
-                    else if(!gValuesTable[i][nodeNum].equals(values1[i]))
+                    else if (!gValuesTable[i][nodeNum].equals(values1[i]))
                         gValuesTable[i][nodeNum] = "";
 
-                    if(gValuesTable[nodeNum][i].equals(""))
+                    if (gValuesTable[nodeNum][i].equals(""))
                         gValuesTable[nodeNum][i] = values2[i];
-                    else if(!gValuesTable[nodeNum][i].equals(values2[i]))
+                    else if (!gValuesTable[nodeNum][i].equals(values2[i]))
                         gValuesTable[nodeNum][i] = "";
                 }
                 if (waitForGsThread == null) { //starts a new thread
@@ -401,6 +413,7 @@ public class Node {
 
     /**
      * Handles income private sessions
+     *
      * @param socket - The incoming socket to handle
      */
     protected void startSession(Socket socket) {
@@ -436,9 +449,9 @@ public class Node {
             }
 
             String[] reducedG = new String[mNumberOfValues];
-            for(int i=0;i<mNumberOfValues;i++)
-                reducedG[i] = String.valueOf(interpolateRobust(gValuesTable[i], (2 * mFaults)-1, 0, mNumberOfValues - mFaults));
-            Double res = interpolateRobust(reducedG, (2 * mFaults)-1, 0, mNumberOfValues - mFaults);
+            for (int i = 0; i < mNumberOfValues; i++)
+                reducedG[i] = String.valueOf(interpolateRobust(gValuesTable[i], (2 * mFaults), 0, mNumberOfValues - mFaults));
+            Double res = interpolateRobust(reducedG, (2 * mFaults), 0, mNumberOfValues - mFaults);
 //            Double res = interpolateRobust(g_values, (2 * mFaults)-1, 0, mNumberOfValues - mFaults);
             if (res == null) {
                 print("Node " + mNumber + " failed to reconstruct G polynomial");
@@ -500,7 +513,7 @@ public class Node {
             }
             if (!confirmGoodValues) {
                 print("Node " + mNumber + " is out - failed to confirm values1 in process " + Message.getProcessFromNumber(mProcessType));
-                for(int i =0; i <values2[mProcessType].length;i++){
+                for (int i = 0; i < values2[mProcessType].length; i++) {
                     values2[mProcessType][i] = "0";
                 }
                 return;
@@ -512,7 +525,7 @@ public class Node {
             }
             if (!confirmGoodValues) {
                 System.out.println("Node " + mNumber + " is out - failed to confirm values2");
-                for(int i =0; i <values1[mProcessType].length;i++){
+                for (int i = 0; i < values1[mProcessType].length; i++) {
                     values1[mProcessType][i] = "0";
                 }
                 return;
@@ -521,7 +534,7 @@ public class Node {
             if (!mIOk[mProcessType]) {
                 Message msg = new Message(mNumber, mProcessType, BROADCAST, OK, "DONE");
                 mIOk[msg.getProcessType()] = true;
-                communication.broadcast(msg,broadCasterSocket);
+                communication.broadcast(msg, broadCasterSocket);
 
                 waitForOks[msg.getProcessType()] = new WaitForOk(msg.getProcessType(), 1);
                 waitForOks[msg.getProcessType()].start();
@@ -532,7 +545,7 @@ public class Node {
 
     public void print(String s) {
         //    if (mNumber == 1)
-         System.out.println("this: " + this.mNumber + ": " + s);
+        System.out.println("this: " + this.mNumber + ": " + s);
     }
 
     public class WaitForOk extends Thread {
@@ -587,7 +600,7 @@ public class Node {
                 haveIFinished[okProcNumber] = true;
                 ProtocolDone[okProcNumber] = true;
                 Message notifyEnd = new Message(mNumber, okProcNumber, BROADCAST, PROTOCOL_COMPLETE, String.valueOf(okRound));
-                communication.broadcast(notifyEnd,broadCasterSocket);
+                communication.broadcast(notifyEnd, broadCasterSocket);
                 if (okProcNumber == KEY_TAG)
                     calculateG();
                 // System.out.println(Arrays.toString(values1[mProcessType]));
@@ -681,7 +694,7 @@ public class Node {
 
                 Message msg = new Message(mNumber, compareMsg.getProcessType(), BROADCAST, COMPLAINT, mNumber + "|" + from);
                 print("I am " + mNumber + " And I send broadcast");
-                communication.broadcast(msg,broadCasterSocket);
+                communication.broadcast(msg, broadCasterSocket);
 
             }
         }

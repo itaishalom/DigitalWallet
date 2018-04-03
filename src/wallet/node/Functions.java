@@ -48,7 +48,7 @@ public class Functions {
         ArrayList<Double> xVals = new ArrayList<>();
         for (int i = 0; i < vals.length; i++) {
             try {
-                if (vals[i] != null) {
+                if (vals[i] != null && !vals[i].isEmpty()) {
                     yVals.add(Double.parseDouble(vals[i]));
                     xVals.add((double) (i + 1));
                 }
