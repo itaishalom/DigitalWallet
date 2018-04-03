@@ -151,8 +151,8 @@ public class Node {
                     * Integer.valueOf(values1[RANDOM_VALUES][i]);
             int v2 = (Integer.valueOf(values2[KEY][i]) - Integer.valueOf(values2[KEY_TAG][i]))
                     * Integer.valueOf(values2[RANDOM_VALUES][i]);
-            gValuesTable[i][mNumber] = String.valueOf(v1);
-            gValuesTable[mNumber][i] = String.valueOf(v2);
+            gValuesTable[i][mNumber-1] = String.valueOf(v1);
+            gValuesTable[mNumber-1][i] = String.valueOf(v2);
             info1 += String.valueOf(v1) + ",";
             info2 += String.valueOf(v2) + ",";
         }
@@ -357,7 +357,7 @@ public class Node {
                         e.printStackTrace();
                     }
                 }
-                int nodeNum = msg.getmFrom();
+                int nodeNum = msg.getmFrom() - 1;
                 String[] temp = msg.getmInfo().split(";");
                 String[] values1 = temp[0].split(","), values2 = temp[1].split(",");
                 numOfGValues++;
