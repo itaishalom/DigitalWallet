@@ -22,37 +22,40 @@ public class Client extends Dealer {
     private boolean broadCastStarted = false;
     private boolean qValueArrived = false;
     waitForProcessEnd wait;
+    private Q_V_WAITER qv_wait;
+
     public enum ProccesStatus {
         DONE,
         ACTIVE,
         FAILED,
     }
 
-    /** 
-    * Public constructor 
-    * * @param num  - Node number 
-    * @param port - Listen on this port 
-    * @param f    - Number of faulty nodes allowed 
-    */
+    /**
+     * Public constructor
+     * * @param num  - Node number
+     *
+     * @param port - Listen on this port
+     * @param f    - Number of faulty nodes allowed
+     */
     public Client(int num, int port, int f) {
         super(num, port, f, port);
         QvValues = new String[(3 * f) + 1];
     }
 
-    /** 
-    * Kills the broadcast receiver listener 
-    */
+    /**
+     * Kills the broadcast receiver listener
+     */
     public void killClientReceiver() {
         broadCastStarted = false;
         if (container != null)
             container.shutdown();
     }
 
-/** 
-* Starts process to retrieve the value stored in previous process. 
-* 
-* @param key_tag - The client will try to restore value with key_tag and will success if key_tag=key. 
-*/
+    /**
+     * Starts process to retrieve the value stored in previous process.
+     *
+     * @param key_tag - The client will try to restore value with key_tag and will success if key_tag=key.
+     */
     public void startProcess(int key_tag) {
         processStatus = ProccesStatus.ACTIVE;
         //     container = new BroadcastReceiverClient();
@@ -83,39 +86,43 @@ public class Client extends Dealer {
                 waitForOks[RANDOM_VALUES].join();
                 waitForOks[RANDOM_VALUES] = null;
             }
-            if(wait != null){
+            if (wait != null) {
                 wait.join();
                 wait = null;
+            }
+            if(qv_wait != null){
+                qv_wait.join();
+                qv_wait = null;
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         sendRefresh(RANDOM_VALUES);
-        q[0] = createArrayOfCoefs(mFaults-1, boundForRandom, mRandom);
+        q[0] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
         q[0][0] = mRandom.nextInt(boundForRandom);
-        if( q[0][0] == 0){
+        if (q[0][0] == 0) {
             q[0][0]++;
         }
         ; // decide what to do
-        p[0] = createArrayOfCoefs(mFaults-1, boundForRandom, mRandom);
+        p[0] = createArrayOfCoefs(mFaults, boundForRandom, mRandom);
 
         p[0][0] = mRandom.nextInt(boundForRandom);
-        if( p[0][0] == 0){
+        if (p[0][0] == 0) {
             p[0][0]++;
         }
         for (Node node_i : mAllNodes) {  // Iterate over all Nodes
             calculateAndPrivateSendValues(node_i.mNumber, node_i.getPort(), KEY, RANDOM_VALUES);
         }
 
-        wait = new waitForProcessEnd(key_tag, KEY_TAG, RANDOM_VALUES, "Sending key' bi-polynomial");
+        wait = new waitForProcessEnd(key_tag, KEY_TAG, RANDOM_VALUES, "Sending key' bi-polynomial " + mNumber);
         wait.start();
     }
 
-    /** 
-    * If the client in process it will wait until it success or fails. 
-    * 
-    * @return - If client failed will return -1, else the value sotred 
-    */
+    /**
+     * If the client in process it will wait until it success or fails.
+     *
+     * @return - If client failed will return -1, else the value sotred
+     */
     public int getValue() {
         while (processStatus == ProccesStatus.ACTIVE) {
             try {
@@ -138,9 +145,9 @@ public class Client extends Dealer {
         a.start();    //If true, start the session
     }
 
-    /** 
-    * Handler to handle income private messages to the client - made for the Q_v Values 
-    */
+    /**
+     * Handler to handle income private messages to the client - made for the Q_v Values
+     */
     public class CleintIncomeDataHandler extends Thread {
         Socket mSocket;
 
@@ -165,6 +172,9 @@ public class Client extends Dealer {
                     print("Client got: " + msg);
                     if (msg.getmSubType().equals(Qv_VALUE)) {
                         qValueArrived = true;
+                        if(qv_wait != null){
+                            qv_wait.interrupt();
+                        }
                         QvValues[msg.getmFrom() - 1] = msg.getmInfo();
                         qValuesCounter++;
                         if (calculateQ_v_thread == null) {
@@ -180,26 +190,19 @@ public class Client extends Dealer {
         }
     }
 
-    /** 
-    * This function waits for G values to arrive from nodes. 
-    If no node sends G values after * X seconds- the process fails 
-    */
+
+    /**
+     * This function waits for G values to arrive from nodes.
+     * If no node sends G values after * X seconds- the process fails
+     */
     @Override
     protected void waitForGValues() {
-        if (!waitForQValuesStarted) {
-            waitForQValuesStarted = true;
-            try {
-                Thread.sleep(6000);
-                if (!qValueArrived) {
-                    processStatus = FAILED;
-                    print("No q value arrived - terminating the process");
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        if(qv_wait == null) {
+            qv_wait = new Q_V_WAITER();
+            qv_wait.start();
         }
-
     }
+
 
     @Override
     protected int[] getQValue(int processNumber) {
@@ -209,6 +212,24 @@ public class Client extends Dealer {
     @Override
     protected int[] getPValue(int processNumber) {
         return p[processNumber - RANDOM_VALUES];
+    }
+
+    public class Q_V_WAITER extends Thread {
+        @Override
+        public void run() {
+            if (!waitForQValuesStarted) {
+                waitForQValuesStarted = true;
+                try {
+                    Thread.sleep(6000);
+                    if (!qValueArrived) {
+                        processStatus = FAILED;
+                        print("No q value arrived - terminating the process");
+                    }
+                } catch (InterruptedException e) {
+                    print("values arrived");
+                }
+            }
+        }
     }
 
     public class CalculateQ_V extends Thread {

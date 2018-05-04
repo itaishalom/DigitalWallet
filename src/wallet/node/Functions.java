@@ -48,13 +48,16 @@ public class Functions {
         ArrayList<Double> xVals = new ArrayList<>();
         for (int i = 0; i < vals.length; i++) {
             try {
-                if (vals[i] != null) {
+                if (vals[i] != null && !vals[i].isEmpty() &&!vals[i].equals("null")) {
                     yVals.add(Double.parseDouble(vals[i]));
                     xVals.add((double) (i + 1));
                 }
             } catch (NullPointerException e) {
                 System.out.println("bad value = " + vals[i]);
+            } catch (NumberFormatException e) {
+                System.out.println("bad value = " + vals[i]);
             }
+
         }
         PolynomialRegression p = combine(xVals, yVals, f + 1, numOfCorrectValues);
         if (p != null) {

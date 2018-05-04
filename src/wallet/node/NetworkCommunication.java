@@ -63,15 +63,15 @@ public class NetworkCommunication {
         }
     }
 
-     void broadcast(Message broadcastMessage ) {
+     void broadcast(Message broadcastMessage, DatagramSocket socket) {
         List<InetAddress> broadcastList = null;
-          //   System.out.println("Broadcast: " + broadcastMessage);
+      //     System.out.println("Broadcast: " + broadcastMessage);
         try {
             broadcastList = listAllBroadcastAddresses();
 
             if (broadcastList != null && broadcastList.size() > 0) {
                 InetAddress address = broadcastList.get(0);
-                DatagramSocket socket = new DatagramSocket();
+                 socket = new DatagramSocket();
                 socket.setBroadcast(true);
 
                 byte[] buffer = broadcastMessage.toString().getBytes();
